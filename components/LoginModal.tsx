@@ -256,57 +256,44 @@ export default function LoginModal({
               <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                 Quick Select Role / Account
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => selectQuickAccount({ username: 'niranjan' })}
-                  className={`p-2 rounded-xl border text-xs text-left transition flex items-center gap-2 ${
+                  className={`p-2.5 rounded-xl border text-xs text-center transition ${
                     username === 'niranjan'
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold'
                       : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
                   }`}
                 >
-                  <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-                  <span className="truncate">Mr. Niranjan</span>
+                  <UserCheck className="w-4 h-4 mx-auto text-blue-600 mb-1" />
+                  <span className="block truncate">Mr. Niranjan</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => selectQuickAccount({ username: 'vinod' })}
-                  className={`p-2 rounded-xl border text-xs text-left transition flex items-center gap-2 ${
+                  className={`p-2.5 rounded-xl border text-xs text-center transition ${
                     username === 'vinod'
                       ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold'
                       : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
                   }`}
                 >
-                  <UserCheck className="w-3.5 h-3.5 text-purple-600" />
-                  <span className="truncate">Mr. Vinod</span>
+                  <UserCheck className="w-4 h-4 mx-auto text-purple-600 mb-1" />
+                  <span className="block truncate">Mr. Vinod</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => selectQuickAccount({ username: 'stores' })}
-                  className={`p-2 rounded-xl border text-xs text-left transition flex items-center gap-2 ${
+                  className={`p-2.5 rounded-xl border text-xs text-center transition ${
                     username === 'stores'
                       ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold'
                       : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
                   }`}
                 >
-                  <Warehouse className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="truncate">Stores</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => selectQuickAccount({ username: 'admin' })}
-                  className={`p-2 rounded-xl border text-xs text-left transition flex items-center gap-2 ${
-                    username === 'admin'
-                      ? 'border-red-500 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-bold'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
-                  <span className="truncate">Admin</span>
+                  <Warehouse className="w-4 h-4 mx-auto text-emerald-600 mb-1" />
+                  <span className="block truncate">Stores</span>
                 </button>
               </div>
 
@@ -357,7 +344,7 @@ export default function LoginModal({
                   <input
                     type="text"
                     required
-                    placeholder="e.g. niranjan, vinod, stores, admin, dilanka"
+                    placeholder="e.g. abc, stores, dilanka, etc."
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full text-xs pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
@@ -372,14 +359,14 @@ export default function LoginModal({
                     Password
                   </label>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                    Default: &lt;Name&gt;@123
+                    Format: ABC@123
                   </span>
                 </div>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    placeholder="Enter password (e.g. Niranjan@123)"
+                    placeholder="Enter password (e.g. ABC@123)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full text-xs pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"

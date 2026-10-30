@@ -1,25 +1,26 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CurrentUser, IDepartment } from '@/types';
+import { CurrentUser, IDepartment, IMRN } from '@/types';
 import {
   Building2,
   Search,
   PlusCircle,
   UserCheck,
-  ShieldCheck,
   Warehouse,
   FileText,
-  ChevronDown,
   Sun,
   Moon,
   LogIn,
-  KeyRound,
+  LogOut,
+  Bell,
+  CheckCircle,
+  Clock,
+  ChevronDown,
 } from 'lucide-react';
 
 interface NavbarProps {
   currentUser: CurrentUser;
-  onUserChange: (user: CurrentUser) => void;
   departments: IDepartment[];
   onOpenNewMRN: () => void;
   onSearchMRN: (mrnNo: string) => void;
@@ -28,11 +29,14 @@ interface NavbarProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onOpenLogin: () => void;
+  onLogout: () => void;
+  onExitToPortal: () => void;
+  mrns: IMRN[];
+  onSelectMRN: (mrn: IMRN) => void;
 }
 
 export default function Navbar({
   currentUser,
-  onUserChange,
   departments,
   onOpenNewMRN,
   onSearchMRN,
@@ -41,9 +45,13 @@ export default function Navbar({
   theme,
   onToggleTheme,
   onOpenLogin,
+  onLogout,
+  onExitToPortal,
+  mrns,
+  onSelectMRN,
 }: NavbarProps) {
   const [searchInput, setSearchInput] = useState('');
-  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,238 +60,299 @@ export default function Navbar({
     }
   };
 
-  const getRoleBadge = () => {
+  // Determine user display label (Notice: "Mr.Niranan Management kyl danna epa")
+  const getUserDisplayLabel = () => {
     switch (currentUser.role) {
-      case 'admin':
-        return { label: 'System Admin', bg: 'bg-red-600 text-white', icon: ShieldCheck };
-      case 'management_vinod':
-        return { label: 'Mr. Vinod (Final Approval)', bg: 'bg-purple-700 text-white', icon: UserCheck };
       case 'management_niranjan':
-        return { label: 'Mr. Niranjan (Management)', bg: 'bg-blue-700 text-white', icon: UserCheck };
+        return 'Mr. Niranjan';
+      case 'management_vinod':
+        return 'Mr. Vinod';
       case 'stores':
-        return { label: 'Stores Department', bg: 'bg-emerald-700 text-white', icon: Warehouse };
+        return 'Stores Department';
       case 'supervisor':
-        return { label: `Supervisor (${currentUser.name})`, bg: 'bg-amber-600 text-white', icon: UserCheck };
+        return `${currentUser.name} (${currentUser.department})`;
+      case 'admin':
+        return 'System Admin';
       default:
-        return { label: `${currentUser.department || 'Department'} (Requester)`, bg: 'bg-slate-700 text-white', icon: Building2 };
+        return `${currentUser.department || 'Department'}`;
     }
   };
 
-  const badge = getRoleBadge();
-  const IconComponent = badge.icon;
+  // Calculate pending MRNs for notification based on logged-in user role
+  const getPendingNotifications = () => {
+    if (!mrns || mrns.length === 0) return [];
+
+    if (currentUser.role === 'supervisor') {
+      return mrns.filter(
+        (m) =>
+          m.department === currentUser.department &&
+          !m.supervisorApproval?.approved &&
+          m.status === 'PENDING_SUPERVISOR'
+      );
+    }
+
+    if (currentUser.role === 'management_niranjan') {
+      return mrns.filter(
+        (m) =>
+          m.supervisorApproval?.approved &&
+          !m.niranjanApproval?.approved &&
+          m.status !== 'ISSUED' &&
+          m.status !== 'REJECTED'
+      );
+    }
+
+    if (currentUser.role === 'management_vinod') {
+      return mrns.filter(
+        (m) =>
+          m.supervisorApproval?.approved &&
+          !m.vinodApproval?.approved &&
+          m.status !== 'ISSUED' &&
+          m.status !== 'REJECTED'
+      );
+    }
+
+    if (currentUser.role === 'stores') {
+      return mrns.filter(
+        (m) =>
+          m.supervisorApproval?.approved &&
+          !m.storesIssue?.issued &&
+          m.status !== 'REJECTED'
+      );
+    }
+
+    return [];
+  };
+
+  const pendingNotifications = getPendingNotifications();
+  const notifCount = pendingNotifications.length;
+
+  // Crucial requirement:
+  // "Anika bn Mr.Niranjanta,Mr.Vinodta,Adminta,Supervisorslata New Mrn Create kyl penanna ona na bn."
+  // Only Department role can create New MRN!
+  const canCreateNewMRN = currentUser.role === 'department';
 
   return (
-    <>
-      <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-3 sm:gap-4">
-            {/* Brand Logo & Name */}
-            <div
-              className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0"
-              onClick={() => setActiveTab('mrns')}
-            >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-700 flex items-center justify-center font-black text-lg sm:text-xl tracking-wider text-white shadow-md shadow-sky-600/30">
-                SL
-              </div>
-              <div>
-                <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight">
-                  Sundaram Lanka Tyres LTD.
-                </h1>
-                <p className="text-[10px] sm:text-xs text-sky-400 font-semibold tracking-wide">
-                  Material Request Note (MRN) System
-                </p>
-              </div>
+    <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-3">
+          {/* Brand Logo & Name */}
+          <div
+            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0"
+            onClick={onExitToPortal}
+            title="Return to Portal"
+          >
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-700 flex items-center justify-center font-black text-lg sm:text-xl tracking-wider text-white shadow-md shadow-sky-600/30">
+              SL
             </div>
+            <div>
+              <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight">
+                Sundaram Lanka Tyres LTD.
+              </h1>
+              <p className="text-[10px] sm:text-xs text-sky-400 font-semibold tracking-wide">
+                Material Request Note (MRN) System
+              </p>
+            </div>
+          </div>
 
-            {/* Quick Search Bar for Any MRN */}
-            <form onSubmit={handleSearch} className="hidden lg:flex items-center flex-1 max-w-sm mx-2">
-              <div className="relative w-full">
-                <input
-                  type="text"
-                  placeholder="Track any MRN No (e.g. MRN-202610...)"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full bg-slate-800/80 text-xs text-slate-100 placeholder-slate-400 pl-9 pr-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
-                />
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-              </div>
-              <button
-                type="submit"
-                className="ml-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition"
-              >
-                Track
-              </button>
-            </form>
+          {/* Quick Search Bar for Any MRN */}
+          <form onSubmit={handleSearch} className="hidden lg:flex items-center flex-1 max-w-sm mx-2">
+            <div className="relative w-full">
+              <input
+                type="text"
+                placeholder="Track any MRN No (e.g. MRN-202610...)"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full bg-slate-800/80 text-xs text-slate-100 placeholder-slate-400 pl-9 pr-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-sky-500 transition-all"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+            </div>
+            <button
+              type="submit"
+              className="ml-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition"
+            >
+              Track
+            </button>
+          </form>
 
-            {/* Actions: New MRN, Login, Light/Dark Mode Toggle, Role Badge */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Create MRN Button */}
+          {/* Right Action Section */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Create MRN Button: Strictly for Department Requesters only */}
+            {canCreateNewMRN && (
               <button
                 onClick={onOpenNewMRN}
                 className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-sky-600/30 transition"
               >
                 <PlusCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">New MRN</span>
+                <span>New MRN</span>
               </button>
+            )}
 
-              {/* Login Button (Right next to New MRN as requested: "New MRN ek eha paththen Login kyl dapan") */}
-              <button
-                onClick={onOpenLogin}
-                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-emerald-600/30 transition"
-                title="Login / Change Password"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Login</span>
-              </button>
+            {/* Notification Bell (for Supervisors, Niranjan, Vinod, Stores) */}
+            {currentUser.role !== 'department' && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition relative"
+                  title="Pending Approval Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                  {notifCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse shadow-md shadow-red-500/50">
+                      {notifCount}
+                    </span>
+                  )}
+                </button>
 
-              {/* Light / Dark Mode Toggle Button */}
-              <button
-                onClick={onToggleTheme}
-                className="p-2 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition"
-                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {theme === 'dark' ? (
-                  <Sun className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Moon className="w-4 h-4 text-sky-300" />
+                {/* Notifications Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2">
+                      <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                        <Bell className="w-3.5 h-3.5 text-sky-500" />
+                        Pending Approvals ({notifCount})
+                      </span>
+                      <button
+                        onClick={() => setShowNotifications(false)}
+                        className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {notifCount === 0 ? (
+                      <div className="py-6 text-center text-xs text-slate-400">
+                        <CheckCircle className="w-6 h-6 mx-auto text-emerald-500 mb-1" />
+                        No pending requests waiting for your action.
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                        {pendingNotifications.map((m) => (
+                          <div
+                            key={m._id}
+                            onClick={() => {
+                              onSelectMRN(m);
+                              setShowNotifications(false);
+                            }}
+                            className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/70 border border-slate-100 dark:border-slate-800 cursor-pointer transition text-left"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-sky-600 dark:text-sky-400 text-xs font-mono">
+                                {m.mrnNo}
+                              </span>
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
+                                Needs Action
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-700 dark:text-slate-300 font-medium truncate mt-0.5">
+                              {m.department} - {m.requestedBy}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {m.items?.length || 0} material item(s)
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
-              </button>
+              </div>
+            )}
 
-              {/* Current Role / User Pill */}
-              <button
-                onClick={() => setShowRoleModal(true)}
-                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold shadow transition hover:opacity-90 ${badge.bg}`}
-                title="Quick Department Switcher"
-              >
-                <IconComponent className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate max-w-[120px] lg:max-w-[180px]">{badge.label}</span>
-                <ChevronDown className="w-3.5 h-3.5 opacity-70 shrink-0" />
-              </button>
-            </div>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="flex space-x-1 border-t border-slate-800 pt-1 pb-2 overflow-x-auto text-xs font-medium">
+            {/* Theme Toggle */}
             <button
-              onClick={() => setActiveTab('mrns')}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                activeTab === 'mrns'
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
+              onClick={onToggleTheme}
+              className="p-2 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition"
+              title="Toggle Light / Dark Mode"
             >
-              <FileText className="w-3.5 h-3.5" />
-              MRN Requests
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-sky-300" />
+              )}
             </button>
 
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                activeTab === 'analytics'
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              <Warehouse className="w-3.5 h-3.5" />
-              Stores & Management Analytics / Reports
-            </button>
+            {/* Logged in User Name & Logout Button */}
+            {currentUser.isAuthenticated ? (
+              <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 p-1 pl-3 rounded-xl">
+                <span className="text-xs font-bold text-slate-200 truncate max-w-[130px] sm:max-w-[180px]">
+                  {getUserDisplayLabel()}
+                </span>
+                <button
+                  onClick={onLogout}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600/90 hover:bg-red-600 text-white text-xs font-bold rounded-lg shadow transition active:scale-95"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                {/* Department switcher / exit button */}
+                <button
+                  onClick={onExitToPortal}
+                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl transition"
+                  title="Switch Department"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span className="truncate max-w-[100px] sm:max-w-[140px]">{currentUser.department}</span>
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </button>
 
-            {currentUser.role === 'admin' && (
-              <button
-                onClick={() => setActiveTab('admin')}
-                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                  activeTab === 'admin'
-                    ? 'bg-red-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Admin Panel (Departments & Supervisors)
-              </button>
+                {/* Sign In Button */}
+                <button
+                  onClick={onOpenLogin}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl shadow transition"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Login</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
-      </header>
 
-      {/* Department Quick Switcher Modal (No password required for departments) */}
-      {showRoleModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">
-              <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-                  Department Selection (No Login Required)
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Select your department to raise Material Request Notes. Password login is required for Approvers, Stores, and Admin.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowRoleModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-semibold p-1"
-              >
-                ✕
-              </button>
-            </div>
+        {/* Navigation Tabs */}
+        <div className="flex space-x-1 border-t border-slate-800 pt-1 pb-2 overflow-x-auto text-xs font-medium">
+          <button
+            onClick={() => setActiveTab('mrns')}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              activeTab === 'mrns'
+                ? 'bg-sky-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            MRN Requests
+          </button>
 
-            {/* Password Login Prompt for Special Roles */}
-            <div className="mb-5 p-3.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-2xl flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <KeyRound className="w-5 h-5 text-sky-600" />
-                <div>
-                  <div className="text-xs font-bold text-sky-900 dark:text-sky-200">
-                    Need to Approve, Issue or Manage?
-                  </div>
-                  <div className="text-[11px] text-sky-700 dark:text-sky-300">
-                    Mr. Niranjan, Mr. Vinod, Stores & Supervisors sign in with password.
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowRoleModal(false);
-                  onOpenLogin();
-                }}
-                className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl shadow transition"
-              >
-                Open Login
-              </button>
-            </div>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              activeTab === 'analytics'
+                ? 'bg-sky-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Warehouse className="w-3.5 h-3.5" />
+            Stores & Management Analytics / Reports
+          </button>
 
-            {/* Department Requesters Grid */}
-            <div>
-              <h4 className="text-xs font-semibold uppercase text-slate-400 dark:text-slate-500 tracking-wider mb-2.5">
-                Departments ({departments.length})
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto p-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-                {departments.map((dept) => (
-                  <button
-                    key={dept.name}
-                    onClick={() => {
-                      onUserChange({
-                        id: `dept-${dept.name}`,
-                        name: `${dept.name} Officer`,
-                        role: 'department',
-                        department: dept.name,
-                        isAuthenticated: false,
-                      });
-                      setShowRoleModal(false);
-                    }}
-                    className={`p-2.5 rounded-xl border text-left transition text-xs ${
-                      currentUser.department === dept.name
-                        ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200 font-bold'
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-sky-400 text-slate-800 dark:text-slate-200'
-                    }`}
-                  >
-                    <div className="truncate">{dept.name}</div>
-                    <div className="text-[10px] text-slate-400 truncate">Requester</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* Admin panel only visible when logged in as admin */}
+          {currentUser.role === 'admin' && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                activeTab === 'admin'
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+            >
+              Admin Panel
+            </button>
+          )}
         </div>
-      )}
-    </>
+      </div>
+    </header>
   );
 }

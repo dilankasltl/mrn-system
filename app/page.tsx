@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
+import LandingPortal from '@/components/LandingPortal';
 import NewMRNModal from '@/components/NewMRNModal';
 import MRNDetailsModal from '@/components/MRNDetailsModal';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
@@ -21,20 +22,24 @@ import {
   AlertCircle,
   Loader2,
   FileText,
-  UserCheck,
+  ArrowLeft,
+  Bell,
 } from 'lucide-react';
 
 export default function HomePage() {
   // Theme state: 'light' or 'dark'
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
+  // View state: 'portal' (initial landing/department selection) or 'dashboard'
+  const [viewMode, setViewMode] = useState<'portal' | 'dashboard'>('portal');
+
   // Current logged in user / role
   const [currentUser, setCurrentUser] = useState<CurrentUser>({
-    id: 'niranjan',
-    name: 'Mr. Niranjan',
-    username: 'niranjan',
-    role: 'management_niranjan',
-    isAuthenticated: true,
+    id: 'guest',
+    name: 'Department Requester',
+    role: 'department',
+    department: 'Engineering',
+    isAuthenticated: false,
   });
 
   const [departments, setDepartments] = useState<IDepartment[]>([]);
@@ -42,7 +47,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
 
-  // Active navigation tab
+  // Active navigation tab on dashboard
   const [activeTab, setActiveTab] = useState<'mrns' | 'analytics' | 'admin'>('mrns');
 
   // Modals state
@@ -77,14 +82,15 @@ export default function HomePage() {
     }
   };
 
-  // Restore saved session from localStorage
+  // Restore saved session if user was logged in previously
   useEffect(() => {
     try {
       const savedUserStr = localStorage.getItem('sundaram_mrn_user');
       if (savedUserStr) {
         const parsed = JSON.parse(savedUserStr);
-        if (parsed && parsed.name) {
+        if (parsed && parsed.name && parsed.isAuthenticated) {
           setCurrentUser(parsed);
+          setViewMode('dashboard');
         }
       }
     } catch (e) {
@@ -172,17 +178,63 @@ export default function HomePage() {
       const data = await res.json();
       if (data.success && data.mrn) {
         setSelectedMRN(data.mrn);
+        setViewMode('dashboard');
       } else {
         // Fallback search
         setSearchQuery(mrnNo);
+        setViewMode('dashboard');
         fetchMRNs();
       }
     } catch (err) {
       setSearchQuery(mrnNo);
+      setViewMode('dashboard');
       fetchMRNs();
     } finally {
       setLoading(false);
     }
+  };
+
+  // Select Department from Entrance Portal
+  // Requirement: "Department eka thoragaththt passe thama bn oi page ekt enna ona."
+  const handleSelectDepartment = (deptName: string) => {
+    const deptUser: CurrentUser = {
+      id: `dept-${deptName}`,
+      name: `${deptName} Officer`,
+      role: 'department',
+      department: deptName,
+      isAuthenticated: false,
+    };
+    setCurrentUser(deptUser);
+    setSelectedDeptFilter(deptName);
+    setViewMode('dashboard');
+  };
+
+  // Handle successful login
+  const handleLoginSuccess = (loggedUser: CurrentUser) => {
+    setCurrentUser(loggedUser);
+    if (loggedUser.role === 'supervisor' && loggedUser.department) {
+      setSelectedDeptFilter(loggedUser.department);
+    } else {
+      setSelectedDeptFilter('ALL');
+    }
+    setViewMode('dashboard');
+    fetchMRNs();
+    fetchStats();
+  };
+
+  // Handle Logout
+  // Requirement: "ado Log unt passe logout ekkth dpn. ekm Log unt passe namath pennwpn"
+  const handleLogout = () => {
+    localStorage.removeItem('sundaram_mrn_user');
+    setCurrentUser({
+      id: 'guest',
+      name: 'Department Requester',
+      role: 'department',
+      department: 'Engineering',
+      isAuthenticated: false,
+    });
+    setSelectedDeptFilter('ALL');
+    setViewMode('portal');
   };
 
   // Helper: Status Badge
@@ -226,19 +278,26 @@ export default function HomePage() {
     );
   };
 
+  // If in portal view mode, show the beautiful entrance portal
+  if (viewMode === 'portal') {
+    return (
+      <LandingPortal
+        departments={departments}
+        onSelectDepartment={handleSelectDepartment}
+        onLoginSuccess={handleLoginSuccess}
+        onSearchMRN={handleSearchMRN}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
+
+  // Dashboard Workspace View
   return (
     <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-16 transition-colors duration-200">
       {/* Top Navigation */}
       <Navbar
         currentUser={currentUser}
-        onUserChange={(usr) => {
-          setCurrentUser(usr);
-          if (usr.department && usr.role === 'department') {
-            setSelectedDeptFilter(usr.department);
-          } else {
-            setSelectedDeptFilter('ALL');
-          }
-        }}
         departments={departments}
         onOpenNewMRN={() => setIsNewMRNModalOpen(true)}
         onSearchMRN={handleSearchMRN}
@@ -247,6 +306,10 @@ export default function HomePage() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onOpenLogin={() => setIsLoginModalOpen(true)}
+        onLogout={handleLogout}
+        onExitToPortal={() => setViewMode('portal')}
+        mrns={mrns}
+        onSelectMRN={(m) => setSelectedMRN(m)}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
@@ -539,7 +602,7 @@ export default function HomePage() {
           />
         )}
 
-        {/* Tab 3: Admin Console */}
+        {/* Tab 3: Admin Console (Only visible when logged in as admin) */}
         {activeTab === 'admin' && currentUser.role === 'admin' && (
           <AdminPanel
             departments={departments}
@@ -550,7 +613,7 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* New MRN Creation Modal */}
+      {/* New MRN Creation Modal (Only for department requesters) */}
       <NewMRNModal
         isOpen={isNewMRNModalOpen}
         onClose={() => setIsNewMRNModalOpen(false)}
@@ -567,21 +630,8 @@ export default function HomePage() {
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
         currentUser={currentUser}
-        onLoginSuccess={(loggedUser) => {
-          setCurrentUser(loggedUser);
-          fetchMRNs();
-        }}
-        onLogout={() => {
-          localStorage.removeItem('sundaram_mrn_user');
-          setCurrentUser({
-            id: 'dept-eng',
-            name: 'Engineering Officer',
-            role: 'department',
-            department: 'Engineering',
-            isAuthenticated: false,
-          });
-          fetchMRNs();
-        }}
+        onLoginSuccess={handleLoginSuccess}
+        onLogout={handleLogout}
       />
 
       {/* MRN Details & Approval / Issue Modal */}
