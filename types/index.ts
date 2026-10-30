@@ -82,6 +82,8 @@ export interface CurrentUser {
   id: string;
   name: string;
   role: UserRole;
+  username?: string;
   department?: string;
   isSupervisor?: boolean;
+  isAuthenticated?: boolean;
 }

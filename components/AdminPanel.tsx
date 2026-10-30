@@ -85,22 +85,22 @@ export default function AdminPanel({
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 bg-red-100 text-red-700 rounded-lg">
+            <span className="p-1.5 bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 rounded-xl">
               <Shield className="w-4 h-4" />
             </span>
-            <h2 className="text-lg font-bold text-slate-800">Administrator Console</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Administrator Console</h2>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Configure company departments, assign designated supervisors (1, 2, or 3+ per department), and oversee MRN activity.
           </p>
         </div>
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg shadow transition active:scale-95"
+          className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl shadow transition active:scale-95"
         >
           <Plus className="w-4 h-4" />
           Add Department & Supervisors
@@ -108,17 +108,17 @@ export default function AdminPanel({
       </div>
 
       {msg && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-semibold">
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs rounded-2xl font-semibold">
           {msg}
         </div>
       )}
 
       {/* Departments Grid */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Building className="w-4 h-4 text-slate-500" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Configured Departments & Assigned Supervisors ({departments.length})
             </h3>
           </div>
@@ -128,13 +128,13 @@ export default function AdminPanel({
           {departments.map((dept) => (
             <div
               key={dept.name}
-              className="p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50/50 flex flex-col justify-between transition"
+              className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between transition"
             >
               <div>
                 <div className="flex items-start justify-between">
-                  <h4 className="font-bold text-slate-800 text-sm">{dept.name}</h4>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">{dept.name}</h4>
                   {dept.code && (
-                    <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+                    <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded-md font-mono">
                       {dept.code}
                     </span>
                   )}
@@ -143,7 +143,7 @@ export default function AdminPanel({
 
                 {/* Supervisor badges */}
                 <div className="mt-3">
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-1">
+                  <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block mb-1">
                     Supervisors:
                   </span>
                   {dept.supervisors && dept.supervisors.length > 0 ? (
@@ -151,7 +151,7 @@ export default function AdminPanel({
                       {dept.supervisors.map((s, idx) => (
                         <span
                           key={idx}
-                          className="text-[11px] bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-md font-medium"
+                          className="text-[11px] bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-md font-medium"
                         >
                           {s.name}
                         </span>
@@ -163,7 +163,7 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              <div className="mt-4 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-400">
+              <div className="mt-4 pt-2 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                 <span>Active</span>
               </div>
             </div>
@@ -173,13 +173,13 @@ export default function AdminPanel({
 
       {/* Add Department Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-800">Add New Department</h3>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Add New Department</h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold p-1"
               >
                 ✕
               </button>
@@ -187,7 +187,7 @@ export default function AdminPanel({
 
             <form onSubmit={handleCreateDepartment} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Department Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -196,27 +196,27 @@ export default function AdminPanel({
                   placeholder="e.g. Mixing Line 3"
                   value={deptName}
                   onChange={(e) => setDeptName(e.target.value)}
-                  className="w-full text-xs p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-red-500"
+                  className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-red-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Code</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Code</label>
                   <input
                     type="text"
                     placeholder="e.g. MIX-3"
                     value={deptCode}
                     onChange={(e) => setDeptCode(e.target.value)}
-                    className="w-full text-xs p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-red-500"
+                    className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-red-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Category</label>
                   <select
                     value={deptCategory}
                     onChange={(e) => setDeptCategory(e.target.value)}
-                    className="w-full text-xs p-2 border border-slate-300 rounded-lg focus:outline-none"
+                    className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                   >
                     <option value="Operations">Operations</option>
                     <option value="Production Line">Production Line</option>
@@ -232,13 +232,13 @@ export default function AdminPanel({
               {/* Dynamic Supervisors Inputs: 1, 2, or 3+ */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-700">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                     Department Supervisors (1, 2, or 3+)
                   </label>
                   <button
                     type="button"
                     onClick={handleAddSupervisorField}
-                    className="text-[11px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
+                    className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1"
                   >
                     <Plus className="w-3 h-3" /> Add Another
                   </button>
@@ -252,13 +252,13 @@ export default function AdminPanel({
                         placeholder={`Supervisor ${idx + 1} Name (e.g. Mr. Kamal)`}
                         value={sup}
                         onChange={(e) => handleSupervisorChange(idx, e.target.value)}
-                        className="flex-1 text-xs p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-red-500"
+                        className="flex-1 text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-red-500"
                       />
                       {supervisors.length > 1 && (
                         <button
                           type="button"
                           onClick={() => handleRemoveSupervisorField(idx)}
-                          className="p-1.5 text-slate-400 hover:text-red-500"
+                          className="p-2 text-slate-400 hover:text-red-500"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -268,18 +268,18 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg transition shadow"
+                  className="px-5 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-500 rounded-xl transition shadow"
                 >
                   {loading ? 'Creating...' : 'Save Department'}
                 </button>
