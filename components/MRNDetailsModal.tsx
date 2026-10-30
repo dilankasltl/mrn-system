@@ -224,31 +224,34 @@ export default function MRNDetailsModal({
       <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 my-8 print:shadow-none print:border-none transition-colors duration-200">
         {/* Modal Header */}
         <div className="flex items-start justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div>
-            <div className="text-xs font-bold uppercase text-sky-600 dark:text-sky-400 tracking-wider">
-              Sundaram Lanka Tyres LTD.
-            </div>
-            <div className="flex items-center gap-3 mt-1">
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight font-mono">
-                {mrn.mrnNo}
-              </h2>
-              {isIssued ? (
-                <span className="flex items-center gap-1 px-3 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded-full text-xs font-bold">
-                  <Lock className="w-3.5 h-3.5" /> ISSUED & LOCKED
-                </span>
-              ) : mrn.status === 'APPROVED' ? (
-                <span className="flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 rounded-full text-xs font-bold">
-                  <CheckCircle className="w-3.5 h-3.5" /> APPROVED (Stores Ready)
-                </span>
-              ) : mrn.status === 'SUPERVISOR_APPROVED' || mrn.status === 'NIRANJAN_APPROVED' ? (
-                <span className="flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-full text-xs font-bold">
-                  <Clock className="w-3.5 h-3.5" /> PENDING MANAGEMENT
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-bold">
-                  <Clock className="w-3.5 h-3.5" /> PENDING SUPERVISOR
-                </span>
-              )}
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="TVS SUN-TWS" className="h-10 w-auto object-contain bg-white px-2 py-0.5 rounded-lg" />
+            <div>
+              <div className="text-xs font-bold uppercase text-sky-600 dark:text-sky-400 tracking-wider">
+                Sundaram Lanka Tyres LTD.
+              </div>
+              <div className="flex items-center gap-3 mt-1">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight font-mono">
+                  {mrn.mrnNo}
+                </h2>
+                {isIssued ? (
+                  <span className="flex items-center gap-1 px-3 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded-full text-xs font-bold">
+                    <Lock className="w-3.5 h-3.5" /> ISSUED & LOCKED
+                  </span>
+                ) : mrn.status === 'APPROVED' ? (
+                  <span className="flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 rounded-full text-xs font-bold">
+                    <CheckCircle className="w-3.5 h-3.5" /> APPROVED (Stores Ready)
+                  </span>
+                ) : mrn.status === 'SUPERVISOR_APPROVED' || mrn.status === 'NIRANJAN_APPROVED' ? (
+                  <span className="flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-full text-xs font-bold">
+                    <Clock className="w-3.5 h-3.5" /> PENDING MANAGEMENT
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-bold">
+                    <Clock className="w-3.5 h-3.5" /> PENDING SUPERVISOR
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -303,7 +306,7 @@ export default function MRNDetailsModal({
         )}
 
         {/* MRN Metadata Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 text-xs bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 text-xs bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
           <div>
             <span className="text-slate-400 dark:text-slate-500 block font-medium">Department</span>
             <span className="font-bold text-slate-900 dark:text-white text-sm">{mrn.department}</span>
@@ -316,20 +319,6 @@ export default function MRNDetailsModal({
             <span className="text-slate-400 dark:text-slate-500 block font-medium">Date & Shift</span>
             <span className="font-bold text-slate-800 dark:text-slate-200">
               {new Date(mrn.date).toLocaleDateString()} ({mrn.shift || 'General'})
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400 dark:text-slate-500 block font-medium">Priority</span>
-            <span
-              className={`inline-block font-bold px-2 py-0.5 rounded text-[11px] ${
-                mrn.priority === 'Urgent'
-                  ? 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300'
-                  : mrn.priority === 'High'
-                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
-                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-              }`}
-            >
-              {mrn.priority || 'Normal'}
             </span>
           </div>
         </div>

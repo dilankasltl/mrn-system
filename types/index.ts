@@ -42,7 +42,6 @@ export interface IMRN {
   requestedBy: string;
   shift?: string;
   date: string | Date;
-  priority?: 'Normal' | 'High' | 'Urgent';
   generalRemarks?: string;
   items: IMRNItem[];
   status: MRNStatus;

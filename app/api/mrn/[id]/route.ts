@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     await connectToDatabase();
     const { id } = params;
     const body = await req.json();
-    const { role, items, generalRemarks, priority, shift } = body;
+    const { role, items, generalRemarks, shift } = body;
 
     const mrn = await (MRN as any).findById(id);
     if (!mrn) {
@@ -61,7 +61,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       );
     }
 
-    if (priority) mrn.priority = priority;
     if (shift) mrn.shift = shift;
     if (generalRemarks !== undefined) mrn.generalRemarks = generalRemarks;
 

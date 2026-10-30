@@ -11,14 +11,34 @@ export async function GET(req: NextRequest) {
     const department = searchParams.get('department');
     const status = searchParams.get('status');
     const role = searchParams.get('role');
+    const userDept = searchParams.get('userDept');
     const search = searchParams.get('search');
     const limit = parseInt(searchParams.get('limit') || '100', 10);
 
     const query: any = {};
 
-    // Department filter
-    if (department && department !== 'ALL') {
-      query.department = department;
+    // Department isolation rule:
+    // If regular department user or supervisor, restrict to their department (unless searching for a specific MRN #)
+    if (search && search.trim()) {
+      const s = search.trim();
+      const regex = new RegExp(s, 'i');
+      query.$or = [
+        { mrnNo: regex },
+        { department: regex },
+        { requestedBy: regex },
+        { 'items.description': regex },
+      ];
+    } else {
+      if (role === 'department') {
+        if (userDept) query.department = userDept;
+      } else if (role === 'supervisor') {
+        if (userDept) query.department = userDept;
+      } else {
+        // Admin, Stores, Niranjan, Vinod can view all or filter by department
+        if (department && department !== 'ALL') {
+          query.department = department;
+        }
+      }
     }
 
     // Status filter
@@ -85,7 +105,7 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
     const body = await req.json();
 
-    const { department, requestedBy, shift, date, priority, generalRemarks, items } = body;
+    const { department, requestedBy, shift, date, generalRemarks, items } = body;
 
     if (!department || !department.trim()) {
       return NextResponse.json(
@@ -137,7 +157,6 @@ export async function POST(req: NextRequest) {
       requestedBy: requestedBy.trim(),
       shift: shift || 'General',
       date: date ? new Date(date) : new Date(),
-      priority: priority || 'Normal',
       generalRemarks: generalRemarks ? generalRemarks.trim() : '',
       items: sanitizedItems,
       status: 'PENDING_SUPERVISOR',

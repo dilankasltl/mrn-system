@@ -129,6 +129,11 @@ export default function HomePage() {
         params.append('search', searchQuery.trim());
       }
 
+      params.append('role', currentUser.role);
+      if (currentUser.department) {
+        params.append('userDept', currentUser.department);
+      }
+
       const res = await fetch(`/api/mrn?${params.toString()}`);
       const data = await res.json();
       if (data.success && data.mrns) {
@@ -139,7 +144,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDeptFilter, selectedStatusFilter, searchQuery]);
+  }, [selectedDeptFilter, selectedStatusFilter, searchQuery, currentUser.role, currentUser.department]);
 
   // Fetch Stats
   const fetchStats = useCallback(async () => {
@@ -486,11 +491,6 @@ export default function HomePage() {
                             <span className="font-bold text-sky-700 dark:text-sky-400 hover:underline font-mono">
                               {m.mrnNo}
                             </span>
-                            {m.priority === 'Urgent' && (
-                              <span className="ml-2 text-[10px] bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 px-1.5 py-0.2 rounded font-bold">
-                                URGENT
-                              </span>
-                            )}
                           </td>
 
                           {/* Department */}

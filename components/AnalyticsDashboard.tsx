@@ -48,7 +48,6 @@ export default function AnalyticsDashboard({ mrns, stats, loading, onRefresh }: 
             'Requested By': m.requestedBy,
             'Shift': m.shift || 'General',
             'Date': new Date(m.date).toLocaleDateString(),
-            'Priority': m.priority || 'Normal',
             'Status': m.status,
             'Item No': it.itemNo,
             'Description': it.description,

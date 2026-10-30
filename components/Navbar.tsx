@@ -141,8 +141,8 @@ export default function Navbar({
             onClick={onExitToPortal}
             title="Return to Portal"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-700 flex items-center justify-center font-black text-lg sm:text-xl tracking-wider text-white shadow-md shadow-sky-600/30">
-              SL
+            <div className="bg-white px-2 py-1 rounded-xl shadow-md border border-slate-700 flex items-center justify-center">
+              <img src="/logo.png" alt="TVS SUN-TWS" className="h-7 sm:h-8 w-auto object-contain" />
             </div>
             <div>
               <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight">

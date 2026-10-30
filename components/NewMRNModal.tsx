@@ -30,7 +30,6 @@ export default function NewMRNModal({
   const [department, setDepartment] = useState(currentUser.department || 'Engineering');
   const [requestedBy, setRequestedBy] = useState(currentUser.name || '');
   const [shift, setShift] = useState('General');
-  const [priority, setPriority] = useState<'Normal' | 'High' | 'Urgent'>('Normal');
   const [generalRemarks, setGeneralRemarks] = useState('');
 
   // Default 3 rows as explicitly required: "defult rule 3k thynna ona madi unoth add krgnna plwn wenna ona"
@@ -103,7 +102,6 @@ export default function NewMRNModal({
           department,
           requestedBy: requestedBy.trim() || 'Department User',
           shift,
-          priority,
           generalRemarks,
           items: validItems.map((it, idx) => ({
             itemNo: idx + 1,
@@ -137,13 +135,16 @@ export default function NewMRNModal({
       <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 my-8 transition-colors duration-200">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <div className="text-xs font-bold uppercase text-sky-600 dark:text-sky-400 tracking-wider">
-              Sundaram Lanka Tyres LTD.
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="TVS SUN-TWS" className="h-9 w-auto object-contain bg-white px-2 py-0.5 rounded-lg" />
+            <div>
+              <div className="text-xs font-bold uppercase text-sky-600 dark:text-sky-400 tracking-wider">
+                Sundaram Lanka Tyres LTD.
+              </div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                Generate Material Request Note (MRN)
+              </h2>
             </div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-white">
-              Generate New Material Request Note (MRN)
-            </h2>
           </div>
           <button
             onClick={onClose}
@@ -169,7 +170,7 @@ export default function NewMRNModal({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-5">
           {/* Top Metadata Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Department <span className="text-red-500">*</span>
@@ -213,19 +214,6 @@ export default function NewMRNModal({
                 <option value="Shift A">Shift A</option>
                 <option value="Shift B">Shift B</option>
                 <option value="Shift C">Shift C</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Priority</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
-                className="w-full text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-              >
-                <option value="Normal">Normal</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
               </select>
             </div>
           </div>

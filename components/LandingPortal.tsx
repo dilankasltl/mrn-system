@@ -173,10 +173,10 @@ export default function LandingPortal({
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Header */}
-      <header className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between border-b border-slate-800 z-10">
+      <header className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between border-b border-slate-800 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-sky-500/20">
-            SL
+          <div className="bg-white px-3 py-1.5 rounded-2xl shadow-md border border-slate-700 flex items-center justify-center">
+            <img src="/logo.png" alt="TVS SUN-TWS" className="h-8 sm:h-9 w-auto object-contain" />
           </div>
           <div>
             <h1 className="text-base sm:text-lg font-black tracking-tight text-white leading-tight">
@@ -226,13 +226,18 @@ export default function LandingPortal({
 
       {/* Main Entrance Content */}
       <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 z-10 flex-1 flex flex-col justify-center">
-        {/* Title & Introduction */}
+        {/* Title & Introduction with Logo */}
         <div className="text-center mb-8">
-          <span className="px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-400 border border-sky-500/20 inline-block mb-3">
-            Plant Requisition & Authorization Gateway
-          </span>
+          <div className="inline-block bg-white p-3 rounded-2xl shadow-xl mb-4 border border-slate-700">
+            <img src="/logo.png" alt="TVS SUN-TWS" className="h-12 sm:h-14 w-auto object-contain" />
+          </div>
+          <div>
+            <span className="px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-400 border border-sky-500/20 inline-block mb-2">
+              Plant Requisition & Authorization Gateway
+            </span>
+          </div>
           <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-            Welcome to Sundaram MRN System
+            Sundaram Lanka Tyres LTD. - MRN System
           </h2>
           <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto mt-2">
             Departments can raise material notes without a password. Authorized approvers and Stores officers can sign in with secure credentials.

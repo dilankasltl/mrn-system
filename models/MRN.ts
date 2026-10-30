@@ -7,7 +7,6 @@ export interface IMRNDocument extends Document {
   requestedBy: string;
   shift?: string;
   date: Date;
-  priority: 'Normal' | 'High' | 'Urgent';
   generalRemarks?: string;
   items: IMRNItem[];
   status: MRNStatus;
@@ -83,11 +82,6 @@ const MRNSchema = new Schema<IMRNDocument>(
     date: {
       type: Date,
       default: Date.now,
-    },
-    priority: {
-      type: String,
-      enum: ['Normal', 'High', 'Urgent'],
-      default: 'Normal',
     },
     generalRemarks: {
       type: String,
