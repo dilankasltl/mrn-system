@@ -117,8 +117,14 @@ export default function HomePage() {
     try {
       const params = new URLSearchParams();
 
-      if (selectedDeptFilter !== 'ALL') {
-        params.append('department', selectedDeptFilter);
+      // Strict Department Isolation Rule:
+      // Only Admin, Stores, Niranjan, and Vinod can view all or switch departments.
+      // Department requesters and Supervisors are strictly locked to their chosen department.
+      const isGlobalManager = ['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser.role);
+      const activeDept = isGlobalManager ? selectedDeptFilter : (currentUser.department || 'Production');
+
+      if (activeDept && activeDept !== 'ALL') {
+        params.append('department', activeDept);
       }
 
       if (selectedStatusFilter !== 'ALL') {
@@ -337,22 +343,35 @@ export default function HomePage() {
 
               {/* Department & Status Filters */}
               <div className="flex flex-wrap items-center gap-2">
-                {/* Department Dropdown */}
-                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs">
-                  <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                  <select
-                    value={selectedDeptFilter}
-                    onChange={(e) => setSelectedDeptFilter(e.target.value)}
-                    className="bg-transparent text-slate-700 dark:text-slate-200 font-medium focus:outline-none text-xs"
+                {/* Department: Dropdown for Global Management & Stores, LOCKED BADGE for Department Requester / Supervisor */}
+                {['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser.role) ? (
+                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs">
+                    <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    <select
+                      value={selectedDeptFilter}
+                      onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                      className="bg-transparent text-slate-700 dark:text-slate-200 font-medium focus:outline-none text-xs"
+                    >
+                      <option value="ALL">All Departments</option>
+                      {departments.map((d) => (
+                        <option key={d.name} value={d.name} className="dark:bg-slate-800">
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div
+                    className="flex items-center gap-2 bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-800/80 px-3.5 py-2 rounded-xl text-xs font-bold text-sky-700 dark:text-sky-300 shadow-sm"
+                    title={`Locked to ${currentUser.department || 'Department'}. Requisitions and data are isolated to this department only.`}
                   >
-                    <option value="ALL">All Departments</option>
-                    {departments.map((d) => (
-                      <option key={d.name} value={d.name} className="dark:bg-slate-800">
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <Building2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                    <span>{currentUser.department || 'Department'}</span>
+                    <span className="text-[10px] bg-sky-200 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300 px-1.5 py-0.5 rounded font-mono font-semibold">
+                      Department
+                    </span>
+                  </div>
+                )}
 
                 {/* Status Dropdown */}
                 <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs">

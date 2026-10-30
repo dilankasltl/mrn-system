@@ -185,15 +185,34 @@ export const INITIAL_USERS: InitialUser[] = [
 ];
 
 export async function ensureUsersSeeded() {
-  const count = await User.countDocuments();
-  if (count === 0) {
-    const toInsert = INITIAL_USERS.map((u) => ({
-      username: u.username.toLowerCase(),
-      name: u.name,
-      role: u.role,
-      department: u.department,
-      password: u.defaultPassword,
-    }));
-    await User.insertMany(toInsert);
+  for (const u of INITIAL_USERS) {
+    const existing = await User.findOne({ username: u.username.toLowerCase() });
+    if (!existing) {
+      await User.create({
+        username: u.username.toLowerCase(),
+        name: u.name,
+        role: u.role,
+        department: u.department,
+        password: u.defaultPassword,
+      });
+    } else {
+      // Fix name if it contains (Management) or needs update
+      let changed = false;
+      if (existing.name !== u.name) {
+        existing.name = u.name;
+        changed = true;
+      }
+      if (existing.role !== u.role) {
+        existing.role = u.role;
+        changed = true;
+      }
+      if (u.department && existing.department !== u.department) {
+        existing.department = u.department;
+        changed = true;
+      }
+      if (changed) {
+        await existing.save();
+      }
+    }
   }
 }

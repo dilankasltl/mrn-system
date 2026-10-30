@@ -18,26 +18,41 @@ export async function GET(req: NextRequest) {
     const query: any = {};
 
     // Department isolation rule:
-    // If regular department user or supervisor, restrict to their department (unless searching for a specific MRN #)
-    if (search && search.trim()) {
-      const s = search.trim();
-      const regex = new RegExp(s, 'i');
-      query.$or = [
-        { mrnNo: regex },
-        { department: regex },
-        { requestedBy: regex },
-        { 'items.description': regex },
-      ];
+    // If regular department user or supervisor, restrict STRICTLY to their department
+    if (role === 'department' || role === 'supervisor') {
+      const lockedDept = userDept || department;
+      if (lockedDept) {
+        query.department = lockedDept;
+      }
+      if (search && search.trim()) {
+        const s = search.trim();
+        const regex = new RegExp(s, 'i');
+        query.$and = [
+          { department: lockedDept },
+          {
+            $or: [
+              { mrnNo: regex },
+              { requestedBy: regex },
+              { 'items.description': regex },
+            ],
+          },
+        ];
+        delete query.department;
+      }
     } else {
-      if (role === 'department') {
-        if (userDept) query.department = userDept;
-      } else if (role === 'supervisor') {
-        if (userDept) query.department = userDept;
-      } else {
-        // Admin, Stores, Niranjan, Vinod can view all or filter by department
-        if (department && department !== 'ALL') {
-          query.department = department;
-        }
+      // Admin, Stores, Niranjan, Vinod can view all or filter by department
+      if (department && department !== 'ALL') {
+        query.department = department;
+      }
+      if (search && search.trim()) {
+        const s = search.trim();
+        const regex = new RegExp(s, 'i');
+        query.$or = [
+          { mrnNo: regex },
+          { department: regex },
+          { requestedBy: regex },
+          { 'items.description': regex },
+        ];
       }
     }
 

@@ -288,15 +288,15 @@ export default function Navbar({
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
-                {/* Department switcher / exit button */}
+                {/* Department badge / Exit to portal button */}
                 <button
                   onClick={onExitToPortal}
-                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl transition"
-                  title="Switch Department"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl transition"
+                  title="Switch / Return to Department Selection Portal"
                 >
-                  <Building2 className="w-3.5 h-3.5" />
-                  <span className="truncate max-w-[100px] sm:max-w-[140px]">{currentUser.department}</span>
-                  <ChevronDown className="w-3 h-3 opacity-60" />
+                  <Building2 className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="truncate max-w-[110px] sm:max-w-[150px] font-bold text-white">{currentUser.department}</span>
+                  <span className="text-[10px] bg-slate-900/90 text-slate-400 px-1.5 py-0.5 rounded font-mono">Switch</span>
                 </button>
 
                 {/* Sign In Button */}

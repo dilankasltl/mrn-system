@@ -32,6 +32,15 @@ export default function NewMRNModal({
   const [shift, setShift] = useState('General');
   const [generalRemarks, setGeneralRemarks] = useState('');
 
+  React.useEffect(() => {
+    if (isOpen) {
+      if (currentUser.department) {
+        setDepartment(currentUser.department);
+      }
+      setRequestedBy(currentUser.name || '');
+    }
+  }, [isOpen, currentUser]);
+
   // Default 3 rows as explicitly required: "defult rule 3k thynna ona madi unoth add krgnna plwn wenna ona"
   const [items, setItems] = useState<ItemRow[]>([
     { itemNo: 1, description: '', requestQty: '', unit: 'Nos', remarks: '' },
@@ -175,18 +184,10 @@ export default function NewMRNModal({
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Department <span className="text-red-500">*</span>
               </label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                required
-              >
-                {departments.map((d) => (
-                  <option key={d.name} value={d.name}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 font-bold flex items-center justify-between">
+                <span>{department}</span>
+                <span className="text-[10px] text-slate-400 font-normal">Department Locked</span>
+              </div>
             </div>
 
             <div>

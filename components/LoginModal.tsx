@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CurrentUser } from '@/types';
 import {
   Lock,
   User,
   KeyRound,
-  ShieldCheck,
   Warehouse,
   UserCheck,
   Eye,
@@ -15,8 +14,10 @@ import {
   AlertCircle,
   Loader2,
   X,
-  Info,
+  Users,
+  Search,
 } from 'lucide-react';
+import { SUPERVISORS_DATA } from './LandingPortal';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -33,7 +34,10 @@ export default function LoginModal({
   onLoginSuccess,
   onLogout,
 }: LoginModalProps) {
-  const [activeTab, setActiveTab] = useState<'login' | 'change_password'>('login');
+  // Selected category: 'supervisors' | 'niranjan' | 'vinod' | 'stores' | null
+  const [selectedRoleCategory, setSelectedRoleCategory] = useState<'supervisors' | 'niranjan' | 'vinod' | 'stores' | null>(null);
+  const [supervisorSearch, setSupervisorSearch] = useState('');
+  const [selectedSupervisor, setSelectedSupervisor] = useState<typeof SUPERVISORS_DATA[0] | null>(null);
 
   // Login form state
   const [username, setUsername] = useState(currentUser.username || '');
@@ -43,18 +47,17 @@ export default function LoginModal({
   const [loginError, setLoginError] = useState('');
   const [loginSuccess, setLoginSuccess] = useState('');
 
-  // Change Password form state
+  // Subtle inline Change Password state
+  const [showInlineChangePassword, setShowInlineChangePassword] = useState(false);
   const [changeUsername, setChangeUsername] = useState(currentUser.username || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showChangePass, setShowChangePass] = useState(false);
   const [changeLoading, setChangeLoading] = useState(false);
   const [changeError, setChangeError] = useState('');
   const [changeSuccess, setChangeSuccess] = useState('');
 
-  // Available user accounts for quick selection
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -62,24 +65,62 @@ export default function LoginModal({
       setLoginSuccess('');
       setChangeError('');
       setChangeSuccess('');
+      setShowInlineChangePassword(false);
       if (currentUser.username) {
         setUsername(currentUser.username);
         setChangeUsername(currentUser.username);
       }
-
-      // Fetch accounts list
-      fetch('/api/auth/users')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success && data.users) {
-            setAccounts(data.users);
-          }
-        })
-        .catch(() => {});
     }
   }, [isOpen, currentUser]);
 
   if (!isOpen) return null;
+
+  // Filter supervisors
+  const filteredSupervisors = SUPERVISORS_DATA.filter((s) =>
+    s.name.toLowerCase().includes(supervisorSearch.toLowerCase()) ||
+    s.department.toLowerCase().includes(supervisorSearch.toLowerCase())
+  );
+
+  const handleSelectRoleCategory = (cat: 'supervisors' | 'niranjan' | 'vinod' | 'stores') => {
+    setSelectedRoleCategory(cat);
+    setLoginError('');
+
+    if (cat === 'supervisors') {
+      if (selectedSupervisor) {
+        setUsername(selectedSupervisor.username);
+        setChangeUsername(selectedSupervisor.username);
+      } else {
+        setUsername('');
+      }
+    } else if (cat === 'niranjan') {
+      setSelectedSupervisor(null);
+      setUsername('niranjan');
+      setChangeUsername('niranjan');
+      setPassword('');
+      passwordInputRef.current?.focus();
+    } else if (cat === 'vinod') {
+      setSelectedSupervisor(null);
+      setUsername('vinod');
+      setChangeUsername('vinod');
+      setPassword('');
+      passwordInputRef.current?.focus();
+    } else if (cat === 'stores') {
+      setSelectedSupervisor(null);
+      setUsername('stores');
+      setChangeUsername('stores');
+      setPassword('');
+      passwordInputRef.current?.focus();
+    }
+  };
+
+  const handleSelectSupervisor = (sup: typeof SUPERVISORS_DATA[0]) => {
+    setSelectedSupervisor(sup);
+    setUsername(sup.username);
+    setChangeUsername(sup.username);
+    setPassword('');
+    setLoginError('');
+    passwordInputRef.current?.focus();
+  };
 
   // Handle Login Submit
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -139,7 +180,8 @@ export default function LoginModal({
     setChangeError('');
     setChangeSuccess('');
 
-    if (!changeUsername.trim()) {
+    const targetUser = changeUsername.trim() || username.trim();
+    if (!targetUser) {
       setChangeError('Please enter the username.');
       return;
     }
@@ -166,7 +208,7 @@ export default function LoginModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: changeUsername.trim(),
+          username: targetUser,
           currentPassword: currentPassword.trim(),
           newPassword: newPassword.trim(),
         }),
@@ -181,6 +223,10 @@ export default function LoginModal({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setTimeout(() => {
+        setShowInlineChangePassword(false);
+        setChangeSuccess('');
+      }, 2000);
     } catch (err: any) {
       setChangeError(err.message || 'Error occurred');
     } finally {
@@ -188,17 +234,9 @@ export default function LoginModal({
     }
   };
 
-  // Quick preset selector click
-  const selectQuickAccount = (acc: any) => {
-    setUsername(acc.username);
-    setChangeUsername(acc.username);
-    setPassword('');
-    setLoginError('');
-  };
-
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative transition-colors duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative transition-colors duration-200 max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -208,327 +246,336 @@ export default function LoginModal({
         </button>
 
         {/* Header Branding */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-blue-700 text-white shadow-lg shadow-sky-500/20 mb-3">
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-blue-700 text-white shadow-lg shadow-sky-500/20 mb-2">
             <Lock className="w-6 h-6" />
           </div>
           <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
             Sundaram Lanka Tyres LTD.
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Approver, Stores & Administrator Portal
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Office Sign In Portal
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl mb-6">
-          <button
-            type="button"
-            onClick={() => setActiveTab('login')}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 ${
-              activeTab === 'login'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('change_password')}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 ${
-              activeTab === 'change_password'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <KeyRound className="w-3.5 h-3.5" />
-            Change Password
-          </button>
+        {/* 4 Official Roles: Supervisors | Mr. Niranjan | Mr. Vinod | Stores */}
+        <div className="mb-4">
+          <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 text-center">
+            Select Your Role
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* 1. Supervisors */}
+            <button
+              type="button"
+              onClick={() => handleSelectRoleCategory('supervisors')}
+              className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${
+                selectedRoleCategory === 'supervisors'
+                  ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold shadow-sm'
+                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="block truncate font-semibold">Supervisors</span>
+            </button>
+
+            {/* 2. Mr. Niranjan */}
+            <button
+              type="button"
+              onClick={() => handleSelectRoleCategory('niranjan')}
+              className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${
+                selectedRoleCategory === 'niranjan'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-sm'
+                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="block truncate font-semibold">Mr. Niranjan</span>
+            </button>
+
+            {/* 3. Mr. Vinod */}
+            <button
+              type="button"
+              onClick={() => handleSelectRoleCategory('vinod')}
+              className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${
+                selectedRoleCategory === 'vinod'
+                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold shadow-sm'
+                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <UserCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span className="block truncate font-semibold">Mr. Vinod</span>
+            </button>
+
+            {/* 4. Stores */}
+            <button
+              type="button"
+              onClick={() => handleSelectRoleCategory('stores')}
+              className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${
+                selectedRoleCategory === 'stores'
+                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm'
+                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <Warehouse className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="block truncate font-semibold">Stores</span>
+            </button>
+          </div>
         </div>
 
-        {/* TAB 1: LOGIN */}
-        {activeTab === 'login' && (
-          <div>
-            {/* Quick account presets */}
-            <div className="mb-5">
-              <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                Quick Select Role / Account
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => selectQuickAccount({ username: 'niranjan' })}
-                  className={`p-2.5 rounded-xl border text-xs text-center transition ${
-                    username === 'niranjan'
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <UserCheck className="w-4 h-4 mx-auto text-blue-600 mb-1" />
-                  <span className="block truncate">Mr. Niranjan</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => selectQuickAccount({ username: 'vinod' })}
-                  className={`p-2.5 rounded-xl border text-xs text-center transition ${
-                    username === 'vinod'
-                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <UserCheck className="w-4 h-4 mx-auto text-purple-600 mb-1" />
-                  <span className="block truncate">Mr. Vinod</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => selectQuickAccount({ username: 'stores' })}
-                  className={`p-2.5 rounded-xl border text-xs text-center transition ${
-                    username === 'stores'
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <Warehouse className="w-4 h-4 mx-auto text-emerald-600 mb-1" />
-                  <span className="block truncate">Stores</span>
-                </button>
-              </div>
-
-              {/* Supervisor quick select dropdown */}
-              <div className="mt-2">
-                <select
-                  value={accounts.some((a) => a.username === username && a.role === 'supervisor') ? username : ''}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      selectQuickAccount({ username: e.target.value });
-                    }
-                  }}
-                  className="w-full text-xs p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none"
-                >
-                  <option value="">Or Select Department Supervisor...</option>
-                  {accounts
-                    .filter((a) => a.role === 'supervisor')
-                    .map((a) => (
-                      <option key={a.username} value={a.username}>
-                        {a.name} ({a.department})
-                      </option>
-                    ))}
-                </select>
-              </div>
+        {/* Supervisors selection panel */}
+        {selectedRoleCategory === 'supervisors' && (
+          <div className="mb-4 p-3 bg-amber-50/60 dark:bg-slate-800/80 rounded-2xl border border-amber-300 dark:border-amber-500/40 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between mb-2 pb-1 border-b border-amber-200 dark:border-slate-700">
+              <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" />
+                Select Your Name & Department
+              </span>
             </div>
 
-            {/* Error or Success notification */}
-            {loginError && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-xs rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-                <span>{loginError}</span>
+            <div className="relative mb-2">
+              <input
+                type="text"
+                placeholder="Search supervisor or department..."
+                value={supervisorSearch}
+                onChange={(e) => setSupervisorSearch(e.target.value)}
+                className="w-full text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder-slate-400 pl-7 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2 pointer-events-none" />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
+              {filteredSupervisors.map((s) => {
+                const isSelected = selectedSupervisor?.username === s.username;
+                return (
+                  <button
+                    key={s.username}
+                    type="button"
+                    onClick={() => handleSelectSupervisor(s)}
+                    className={`p-1.5 px-2 rounded-xl border text-left transition flex items-center justify-between text-xs ${
+                      isSelected
+                        ? 'border-amber-500 bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-bold'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="truncate pr-1">
+                      <div className="font-semibold leading-tight">{s.name}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{s.department}</div>
+                    </div>
+                    {isSelected && <CheckCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedSupervisor && (
+              <div className="mt-2 pt-1.5 border-t border-amber-200 dark:border-slate-700 text-[11px] text-amber-800 dark:text-amber-300 flex items-center justify-between">
+                <span>Selected: <strong>{selectedSupervisor.name}</strong></span>
+                <span className="text-[10px] text-slate-500">Default: {selectedSupervisor.defaultPass}</span>
               </div>
             )}
-
-            {loginSuccess && (
-              <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs rounded-xl flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 shrink-0 text-emerald-500" />
-                <span className="font-semibold">{loginSuccess}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Username
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. abc, stores, dilanka, etc."
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full text-xs pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  />
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Password
-                  </label>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                    Format: ABC@123
-                  </span>
-                </div>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    placeholder="Enter password (e.g. ABC@123)"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full text-xs pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  />
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                  <Info className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                  <span>Departments do not require password</span>
-                </div>
-
-                {currentUser.isAuthenticated && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onLogout();
-                      onClose();
-                    }}
-                    className="text-xs text-red-600 hover:underline font-semibold"
-                  >
-                    Logout Current
-                  </button>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                disabled={loginLoading}
-                className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-sky-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {loginLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    <KeyRound className="w-4 h-4" />
-                    Sign In Securely
-                  </>
-                )}
-              </button>
-            </form>
           </div>
         )}
 
-        {/* TAB 2: CHANGE PASSWORD */}
-        {activeTab === 'change_password' && (
+        {/* Alerts */}
+        {loginError && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-xs rounded-xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+            <span>{loginError}</span>
+          </div>
+        )}
+
+        {loginSuccess && (
+          <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs rounded-xl flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-500" />
+            <span className="font-semibold">{loginSuccess}</span>
+          </div>
+        )}
+
+        {/* Sign In Form */}
+        <form onSubmit={handleLoginSubmit} className="space-y-3.5">
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Any authorized user can update their password at any time.
-            </p>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Username
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. dilanka, niranjan, vinod, stores"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setChangeUsername(e.target.value);
+              }}
+              className="w-full text-xs px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Password
+              </label>
+              <span className="text-[10px] text-slate-400">
+                Default: Name@123
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                ref={passwordInputRef}
+                type={showPassword ? 'text' : 'password'}
+                required
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full text-xs px-3.5 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loginLoading}
+            className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
+          >
+            {loginLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Signing In...
+              </>
+            ) : (
+              <>
+                <KeyRound className="w-4 h-4" />
+                Sign In
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Subtle Change Password link right below login */}
+        <div className="mt-3.5 pt-2.5 border-t border-slate-200 dark:border-slate-800 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setShowInlineChangePassword(!showInlineChangePassword);
+              setChangeError('');
+              setChangeSuccess('');
+              if (username) setChangeUsername(username);
+            }}
+            className="text-xs text-sky-600 dark:text-sky-400 hover:underline inline-flex items-center gap-1 font-medium"
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            <span>{showInlineChangePassword ? 'Close Change Password' : 'Change Password?'}</span>
+          </button>
+        </div>
+
+        {/* Inline Change Password panel */}
+        {showInlineChangePassword && (
+          <div className="mt-3 p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between pb-1.5 mb-2.5 border-b border-slate-200 dark:border-slate-700">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+                <KeyRound className="w-3.5 h-3.5 text-sky-500" />
+                Change Password
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowInlineChangePassword(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
             {changeError && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-xs rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+              <div className="mb-2.5 p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-[11px] rounded-xl flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
                 <span>{changeError}</span>
               </div>
             )}
 
             {changeSuccess && (
-              <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs rounded-xl flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 shrink-0 text-emerald-500" />
-                <span className="font-semibold">{changeSuccess}</span>
+              <div className="mb-2.5 p-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 text-[11px] rounded-xl flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                <span>{changeSuccess}</span>
               </div>
             )}
 
-            <form onSubmit={handleChangePasswordSubmit} className="space-y-3.5">
+            <form onSubmit={handleChangePasswordSubmit} className="space-y-2">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
                   Username
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. niranjan, vinod, stores, admin, dilanka"
+                  placeholder="Username"
                   value={changeUsername}
                   onChange={(e) => setChangeUsername(e.target.value)}
-                  className="w-full text-xs px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                  className="w-full text-xs px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
                   Current Password
                 </label>
                 <input
-                  type={showChangePass ? 'text' : 'password'}
+                  type="password"
                   required
-                  placeholder="Enter current password"
+                  placeholder="Current password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full text-xs px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                  className="w-full text-xs px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
                     New Password
                   </label>
                   <input
-                    type={showChangePass ? 'text' : 'password'}
+                    type="password"
                     required
-                    placeholder="New password (min 4 chars)"
+                    placeholder="Min 4 chars"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full text-xs px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                    className="w-full text-xs px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Confirm New Password
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                    Confirm New
                   </label>
                   <input
-                    type={showChangePass ? 'text' : 'password'}
+                    type="password"
                     required
-                    placeholder="Confirm new password"
+                    placeholder="Repeat"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full text-xs px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                    className="w-full text-xs px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                   />
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowChangePass(!showChangePass)}
-                  className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1"
-                >
-                  {showChangePass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  <span>{showChangePass ? 'Hide' : 'Show'} Passwords</span>
-                </button>
               </div>
 
               <button
                 type="submit"
                 disabled={changeLoading}
-                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-1.5 px-3 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 disabled:opacity-50 mt-1"
               >
                 {changeLoading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Updating Password...
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Updating...
                   </>
                 ) : (
-                  <>
-                    <KeyRound className="w-4 h-4" />
-                    Save New Password
-                  </>
+                  'Update Password'
                 )}
               </button>
             </form>

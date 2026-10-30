@@ -8,11 +8,14 @@ export async function GET(req: NextRequest) {
     await connectToDatabase();
     await ensureUsersSeeded();
 
-    const users = await (User as any)
+    const rawUsers = await (User as any)
       .find({})
       .select('username name role department')
       .sort({ role: 1, name: 1 })
       .lean();
+
+    // Hide admin from public list
+    const users = rawUsers.filter((u: any) => u.username !== 'admin');
 
     return NextResponse.json({ success: true, users });
   } catch (error: any) {

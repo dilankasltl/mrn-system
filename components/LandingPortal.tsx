@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { IDepartment, CurrentUser } from '@/types';
 import {
   Building2,
@@ -17,7 +17,9 @@ import {
   Sun,
   Moon,
   ArrowRight,
-  ShieldAlert,
+  Users,
+  ChevronDown,
+  X,
 } from 'lucide-react';
 
 interface LandingPortalProps {
@@ -29,6 +31,30 @@ interface LandingPortalProps {
   onToggleTheme: () => void;
 }
 
+export const SUPERVISORS_DATA = [
+  { username: 'dilanka', name: 'Mr. Dilanka', department: 'Engineering', defaultPass: 'Dilanka@123' },
+  { username: 'shemba', name: 'Mr. Shemba', department: 'Engineering', defaultPass: 'Shemba@123' },
+  { username: 'vidura', name: 'Mr. Vidura', department: 'Finance & Accounting', defaultPass: 'Vidura@123' },
+  { username: 'pavithra', name: 'Mrs. Pavithra', department: 'Finance & Accounting', defaultPass: 'Pavithra@123' },
+  { username: 'rohitha', name: 'Mr. Rohitha', department: 'HRD & Admin', defaultPass: 'Rohitha@123' },
+  { username: 'tharindu', name: 'Mr. Tharindu', department: 'IT', defaultPass: 'Tharindu@123' },
+  { username: 'wickrama', name: 'Mr. Wickrama', department: 'Quality Assurance', defaultPass: 'Wickrama@123' },
+  { username: 'dulan', name: 'Mr. Dulan', department: 'Quality Assurance', defaultPass: 'Dulan@123' },
+  { username: 'ravimal', name: 'Mr. Ravimal', department: 'Production', defaultPass: 'Ravimal@123' },
+  { username: 'dhammika', name: 'Mr. Dhammika', department: 'Production', defaultPass: 'Dhammika@123' },
+  { username: 'avishka', name: 'Mr. Avishka', department: 'Planning', defaultPass: 'Avishka@123' },
+  { username: 'hasula', name: 'Mr. Hasula', department: 'Laboratory', defaultPass: 'Hasula@123' },
+  { username: 'thiwanka', name: 'Mr. Thiwanka', department: 'Engineering Stores', defaultPass: 'Thiwanka@123' },
+  { username: 'subash', name: 'Mr. Subash', department: 'Engineering Stores', defaultPass: 'Subash@123' },
+  { username: 'dimuthu', name: 'Mr. Dimuthu', department: 'Finished Goods Store', defaultPass: 'Dimuthu@123' },
+  { username: 'manjula', name: 'Mr. Manjula', department: 'Purchasing', defaultPass: 'Manjula@123' },
+  { username: 'gayashan', name: 'Mr. Gayashan', department: 'Purchasing', defaultPass: 'Gayashan@123' },
+  { username: 'thushara', name: 'Mr. Thushara', department: 'Shift A', defaultPass: 'Thushara@123' },
+  { username: 'rusiru', name: 'Mr. Rusiru', department: 'Shift A', defaultPass: 'Rusiru@123' },
+  { username: 'rathnayake', name: 'Mr. Rathnayake', department: 'Shift B', defaultPass: 'Rathnayake@123' },
+  { username: 'viraj', name: 'Mr. Viraj', department: 'Shift C', defaultPass: 'Viraj@123' },
+];
+
 export default function LandingPortal({
   departments,
   onSelectDepartment,
@@ -37,9 +63,15 @@ export default function LandingPortal({
   theme,
   onToggleTheme,
 }: LandingPortalProps) {
-  const [activePortalTab, setActivePortalTab] = useState<'departments' | 'login' | 'change_password'>('departments');
+  // Portal navigation tab: Only Department Access OR Office Sign In
+  const [activePortalTab, setActivePortalTab] = useState<'departments' | 'login'>('departments');
   const [deptSearch, setDeptSearch] = useState('');
   const [trackInput, setTrackInput] = useState('');
+
+  // Selected Office Sign In category: 'supervisors' | 'niranjan' | 'vinod' | 'stores' | null
+  const [selectedRoleCategory, setSelectedRoleCategory] = useState<'supervisors' | 'niranjan' | 'vinod' | 'stores' | null>(null);
+  const [supervisorSearch, setSupervisorSearch] = useState('');
+  const [selectedSupervisor, setSelectedSupervisor] = useState<typeof SUPERVISORS_DATA[0] | null>(null);
 
   // Login form state
   const [username, setUsername] = useState('');
@@ -48,7 +80,8 @@ export default function LandingPortal({
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
-  // Change password state
+  // Inline Change Password state (subtle under login form)
+  const [showInlineChangePassword, setShowInlineChangePassword] = useState(false);
   const [changeUsername, setChangeUsername] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -57,10 +90,18 @@ export default function LandingPortal({
   const [changeError, setChangeError] = useState('');
   const [changeSuccess, setChangeSuccess] = useState('');
 
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
   // Filter departments by search
   const filteredDepartments = departments.filter((d) =>
     d.name.toLowerCase().includes(deptSearch.toLowerCase()) ||
     (d.category && d.category.toLowerCase().includes(deptSearch.toLowerCase()))
+  );
+
+  // Filter supervisors by search
+  const filteredSupervisors = SUPERVISORS_DATA.filter((s) =>
+    s.name.toLowerCase().includes(supervisorSearch.toLowerCase()) ||
+    s.department.toLowerCase().includes(supervisorSearch.toLowerCase())
   );
 
   const handleTrackSubmit = (e: React.FormEvent) => {
@@ -68,6 +109,50 @@ export default function LandingPortal({
     if (trackInput.trim()) {
       onSearchMRN(trackInput.trim());
     }
+  };
+
+  // Handle clicking on one of the 4 Office Sign In categories
+  const handleSelectRoleCategory = (category: 'supervisors' | 'niranjan' | 'vinod' | 'stores') => {
+    setSelectedRoleCategory(category);
+    setLoginError('');
+
+    if (category === 'supervisors') {
+      // Keep username empty until supervisor is picked from the list
+      if (selectedSupervisor) {
+        setUsername(selectedSupervisor.username);
+        setChangeUsername(selectedSupervisor.username);
+      } else {
+        setUsername('');
+      }
+    } else if (category === 'niranjan') {
+      setSelectedSupervisor(null);
+      setUsername('niranjan');
+      setChangeUsername('niranjan');
+      setPassword('');
+      passwordInputRef.current?.focus();
+    } else if (category === 'vinod') {
+      setSelectedSupervisor(null);
+      setUsername('vinod');
+      setChangeUsername('vinod');
+      setPassword('');
+      passwordInputRef.current?.focus();
+    } else if (category === 'stores') {
+      setSelectedSupervisor(null);
+      setUsername('stores');
+      setChangeUsername('stores');
+      setPassword('');
+      passwordInputRef.current?.focus();
+    }
+  };
+
+  // Handle picking a supervisor from the list
+  const handleSelectSupervisor = (sup: typeof SUPERVISORS_DATA[0]) => {
+    setSelectedSupervisor(sup);
+    setUsername(sup.username);
+    setChangeUsername(sup.username);
+    setPassword('');
+    setLoginError('');
+    passwordInputRef.current?.focus();
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -119,7 +204,8 @@ export default function LandingPortal({
     setChangeError('');
     setChangeSuccess('');
 
-    if (!changeUsername.trim() || !currentPassword.trim() || !newPassword.trim()) {
+    const targetUser = changeUsername.trim() || username.trim();
+    if (!targetUser || !currentPassword.trim() || !newPassword.trim()) {
       setChangeError('Please fill in all password fields.');
       return;
     }
@@ -141,7 +227,7 @@ export default function LandingPortal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: changeUsername.trim(),
+          username: targetUser,
           currentPassword: currentPassword.trim(),
           newPassword: newPassword.trim(),
         }),
@@ -157,8 +243,9 @@ export default function LandingPortal({
       setNewPassword('');
       setConfirmPassword('');
       setTimeout(() => {
-        setActivePortalTab('login');
-      }, 1500);
+        setShowInlineChangePassword(false);
+        setChangeSuccess('');
+      }, 2000);
     } catch (err: any) {
       setChangeError(err.message || 'Error updating password');
     } finally {
@@ -168,7 +255,7 @@ export default function LandingPortal({
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between relative overflow-hidden transition-colors duration-200">
-      {/* Background radial gradients */}
+      {/* Background radial glow */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-sky-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -225,10 +312,10 @@ export default function LandingPortal({
       </header>
 
       {/* Main Entrance Content */}
-      <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 z-10 flex-1 flex flex-col justify-center">
+      <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-10 z-10 flex-1 flex flex-col justify-center">
         {/* Title & Introduction with Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-block bg-white p-3 rounded-2xl shadow-xl mb-4 border border-slate-700">
+        <div className="text-center mb-6">
+          <div className="inline-block bg-white p-3 rounded-2xl shadow-xl mb-3 border border-slate-700">
             <img src="/logo.png" alt="TVS SUN-TWS" className="h-12 sm:h-14 w-auto object-contain" />
           </div>
           <div>
@@ -236,15 +323,15 @@ export default function LandingPortal({
               Plant Requisition & Authorization Gateway
             </span>
           </div>
-          <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             Sundaram Lanka Tyres LTD. - MRN System
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto mt-2">
-            Departments can raise material notes without a password. Authorized approvers and Stores officers can sign in with secure credentials.
+          <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto mt-1.5">
+            Departments can raise material notes without a password. Authorized Supervisors, Mr. Niranjan, Mr. Vinod, and Stores sign in below.
           </p>
         </div>
 
-        {/* Portal Mode Tabs */}
+        {/* Portal Mode Tabs: ONLY 2 Tabs as requested (Change Password moved inline under login form) */}
         <div className="flex bg-slate-800/80 p-1.5 rounded-2xl max-w-md mx-auto w-full mb-6 border border-slate-700 shadow-xl">
           <button
             type="button"
@@ -269,20 +356,7 @@ export default function LandingPortal({
             }`}
           >
             <Lock className="w-4 h-4" />
-            Official Sign In
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActivePortalTab('change_password')}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 ${
-              activePortalTab === 'change_password'
-                ? 'bg-slate-700 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <KeyRound className="w-4 h-4" />
-            Change Key
+            Office Sign In
           </button>
         </div>
 
@@ -337,74 +411,165 @@ export default function LandingPortal({
           </div>
         )}
 
-        {/* TAB 2: OFFICIAL SIGN IN */}
+        {/* TAB 2: OFFICE SIGN IN */}
         {activePortalTab === 'login' && (
-          <div className="bg-slate-800/60 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-slate-700/80 shadow-2xl max-w-lg mx-auto w-full animate-in fade-in duration-200">
+          <div className="bg-slate-800/60 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-slate-700/80 shadow-2xl max-w-xl mx-auto w-full animate-in fade-in duration-200">
             <div className="text-center mb-6">
               <h3 className="text-lg font-bold text-white flex items-center justify-center gap-2">
                 <Lock className="w-5 h-5 text-emerald-400" />
-                Authorized Sign In
+                Office Sign In
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Enter your designated username and password.
+                Select your role below: Supervisors, Mr. Niranjan, Mr. Vinod, or Stores.
               </p>
             </div>
 
-            {/* Quick account shortcut pills (Note: Admin is completely hidden!) */}
+            {/* 4 Official Roles: Supervisors | Mr. Niranjan | Mr. Vinod | Stores */}
             <div className="mb-5">
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">
-                Select Your Role
+                Select Sign In Role
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* 1. Supervisors */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setUsername('niranjan');
-                    setPassword('');
-                  }}
-                  className={`p-2.5 rounded-xl border text-xs text-center transition ${
-                    username === 'niranjan'
-                      ? 'border-blue-500 bg-blue-950/60 text-blue-300 font-bold'
-                      : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-600'
+                  onClick={() => handleSelectRoleCategory('supervisors')}
+                  className={`p-3 rounded-2xl border text-xs text-center transition flex flex-col items-center justify-center gap-1.5 ${
+                    selectedRoleCategory === 'supervisors'
+                      ? 'border-amber-500 bg-amber-950/60 text-amber-300 font-bold shadow-md shadow-amber-500/20'
+                      : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600'
                   }`}
                 >
-                  <UserCheck className="w-4 h-4 mx-auto text-blue-400 mb-1" />
-                  <span className="block truncate">Mr. Niranjan</span>
+                  <Users className="w-5 h-5 text-amber-400" />
+                  <span className="block truncate font-semibold">Supervisors</span>
                 </button>
 
+                {/* 2. Mr. Niranjan */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setUsername('vinod');
-                    setPassword('');
-                  }}
-                  className={`p-2.5 rounded-xl border text-xs text-center transition ${
-                    username === 'vinod'
-                      ? 'border-purple-500 bg-purple-950/60 text-purple-300 font-bold'
-                      : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-600'
+                  onClick={() => handleSelectRoleCategory('niranjan')}
+                  className={`p-3 rounded-2xl border text-xs text-center transition flex flex-col items-center justify-center gap-1.5 ${
+                    selectedRoleCategory === 'niranjan'
+                      ? 'border-blue-500 bg-blue-950/60 text-blue-300 font-bold shadow-md shadow-blue-500/20'
+                      : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600'
                   }`}
                 >
-                  <UserCheck className="w-4 h-4 mx-auto text-purple-400 mb-1" />
-                  <span className="block truncate">Mr. Vinod</span>
+                  <UserCheck className="w-5 h-5 text-blue-400" />
+                  <span className="block truncate font-semibold">Mr. Niranjan</span>
                 </button>
 
+                {/* 3. Mr. Vinod */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setUsername('stores');
-                    setPassword('');
-                  }}
-                  className={`p-2.5 rounded-xl border text-xs text-center transition ${
-                    username === 'stores'
-                      ? 'border-emerald-500 bg-emerald-950/60 text-emerald-300 font-bold'
-                      : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-600'
+                  onClick={() => handleSelectRoleCategory('vinod')}
+                  className={`p-3 rounded-2xl border text-xs text-center transition flex flex-col items-center justify-center gap-1.5 ${
+                    selectedRoleCategory === 'vinod'
+                      ? 'border-purple-500 bg-purple-950/60 text-purple-300 font-bold shadow-md shadow-purple-500/20'
+                      : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600'
                   }`}
                 >
-                  <Warehouse className="w-4 h-4 mx-auto text-emerald-400 mb-1" />
-                  <span className="block truncate">Stores</span>
+                  <UserCheck className="w-5 h-5 text-purple-400" />
+                  <span className="block truncate font-semibold">Mr. Vinod</span>
+                </button>
+
+                {/* 4. Stores */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectRoleCategory('stores')}
+                  className={`p-3 rounded-2xl border text-xs text-center transition flex flex-col items-center justify-center gap-1.5 ${
+                    selectedRoleCategory === 'stores'
+                      ? 'border-emerald-500 bg-emerald-950/60 text-emerald-300 font-bold shadow-md shadow-emerald-500/20'
+                      : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600'
+                  }`}
+                >
+                  <Warehouse className="w-5 h-5 text-emerald-400" />
+                  <span className="block truncate font-semibold">Stores</span>
                 </button>
               </div>
             </div>
+
+            {/* SUPERVISORS LIST VIEW: Appears when 'Supervisors' is selected */}
+            {selectedRoleCategory === 'supervisors' && (
+              <div className="mb-5 p-3.5 bg-slate-900/90 rounded-2xl border border-amber-500/40 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-800">
+                  <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />
+                    Select Your Supervisor Account
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {filteredSupervisors.length} supervisors
+                  </span>
+                </div>
+
+                {/* Search filter for supervisors */}
+                <div className="relative mb-2.5">
+                  <input
+                    type="text"
+                    placeholder="Filter by supervisor name or department..."
+                    value={supervisorSearch}
+                    onChange={(e) => setSupervisorSearch(e.target.value)}
+                    className="w-full text-xs bg-slate-800/90 text-slate-200 placeholder-slate-400 pl-8 pr-3 py-1.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500"
+                  />
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2 pointer-events-none" />
+                </div>
+
+                {/* Scrollable list of supervisors with their departments */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                  {filteredSupervisors.map((s) => {
+                    const isSelected = selectedSupervisor?.username === s.username;
+                    return (
+                      <button
+                        key={s.username}
+                        type="button"
+                        onClick={() => handleSelectSupervisor(s)}
+                        className={`p-2 rounded-xl border text-left transition flex items-center justify-between text-xs ${
+                          isSelected
+                            ? 'border-amber-500 bg-amber-950/60 text-amber-200 font-bold'
+                            : 'border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        <div className="truncate pr-1">
+                          <div className="font-semibold">{s.name}</div>
+                          <div className="text-[10px] text-slate-400 truncate">{s.department}</div>
+                        </div>
+                        {isSelected && <CheckCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedSupervisor && (
+                  <div className="mt-2.5 pt-2 border-t border-slate-800 text-[11px] text-amber-300/90 flex items-center justify-between">
+                    <span>
+                      Selected: <strong>{selectedSupervisor.name}</strong> ({selectedSupervisor.department})
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      Default: {selectedSupervisor.defaultPass}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Hint Badge for Niranjan, Vinod, Stores */}
+            {selectedRoleCategory === 'niranjan' && (
+              <div className="mb-4 p-2.5 bg-blue-950/40 border border-blue-800/60 rounded-xl text-xs text-blue-300 flex items-center justify-between">
+                <span>Signing in as <strong>Mr. Niranjan</strong></span>
+                <span className="text-[10px] text-slate-400">Default: Niranjan@123</span>
+              </div>
+            )}
+            {selectedRoleCategory === 'vinod' && (
+              <div className="mb-4 p-2.5 bg-purple-950/40 border border-purple-800/60 rounded-xl text-xs text-purple-300 flex items-center justify-between">
+                <span>Signing in as <strong>Mr. Vinod</strong></span>
+                <span className="text-[10px] text-slate-400">Default: Vinod@123</span>
+              </div>
+            )}
+            {selectedRoleCategory === 'stores' && (
+              <div className="mb-4 p-2.5 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-xs text-emerald-300 flex items-center justify-between">
+                <span>Signing in as <strong>Stores Department</strong></span>
+                <span className="text-[10px] text-slate-400">Default: Stores@123</span>
+              </div>
+            )}
 
             {loginError && (
               <div className="mb-4 p-3 bg-red-950/40 border border-red-800 text-red-300 text-xs rounded-xl flex items-center gap-2">
@@ -413,6 +578,7 @@ export default function LandingPortal({
               </div>
             )}
 
+            {/* Main Sign In Form */}
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
@@ -421,9 +587,12 @@ export default function LandingPortal({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. niranjan, vinod, stores, dilanka, etc."
+                  placeholder="e.g. dilanka, niranjan, vinod, stores"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    setChangeUsername(e.target.value);
+                  }}
                   className="w-full text-xs px-3.5 py-2.5 bg-slate-900/90 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -434,11 +603,12 @@ export default function LandingPortal({
                     Password
                   </label>
                   <span className="text-[10px] text-slate-400">
-                    Format: ABC@123
+                    Default format: Name@123
                   </span>
                 </div>
                 <div className="relative">
                   <input
+                    ref={passwordInputRef}
                     type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="Enter password (e.g. ABC@123)"
@@ -474,110 +644,130 @@ export default function LandingPortal({
                 )}
               </button>
             </form>
-          </div>
-        )}
 
-        {/* TAB 3: CHANGE PASSWORD */}
-        {activePortalTab === 'change_password' && (
-          <div className="bg-slate-800/60 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-slate-700/80 shadow-2xl max-w-lg mx-auto w-full animate-in fade-in duration-200">
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-bold text-white flex items-center justify-center gap-2">
-                <KeyRound className="w-5 h-5 text-sky-400" />
-                Change Password Anytime
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Update your security password safely in the system database.
-              </p>
+            {/* SUBTLE INLINE CHANGE PASSWORD BUTTON: Exactly right below login button */}
+            <div className="mt-4 pt-3 border-t border-slate-800 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowInlineChangePassword(!showInlineChangePassword);
+                  setChangeError('');
+                  setChangeSuccess('');
+                  if (username) setChangeUsername(username);
+                }}
+                className="text-xs text-sky-400 hover:text-sky-300 hover:underline inline-flex items-center gap-1.5 transition font-medium"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>{showInlineChangePassword ? 'Close Change Password' : 'Change Password?'}</span>
+              </button>
             </div>
 
-            {changeError && (
-              <div className="mb-4 p-3 bg-red-950/40 border border-red-800 text-red-300 text-xs rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-                <span>{changeError}</span>
-              </div>
-            )}
-
-            {changeSuccess && (
-              <div className="mb-4 p-3 bg-emerald-950/40 border border-emerald-800 text-emerald-300 text-xs rounded-xl flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 shrink-0 text-emerald-500" />
-                <span>{changeSuccess}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleChangePasswordSubmit} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. niranjan, vinod, stores, dilanka"
-                  value={changeUsername}
-                  onChange={(e) => setChangeUsername(e.target.value)}
-                  className="w-full text-xs px-3.5 py-2.5 bg-slate-900/90 border border-slate-700 rounded-xl text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Enter current password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full text-xs px-3.5 py-2.5 bg-slate-900/90 border border-slate-700 rounded-xl text-white focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Min 4 characters"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-900/90 border border-slate-700 rounded-xl text-white focus:outline-none"
-                  />
+            {/* COLLAPSIBLE INLINE CHANGE PASSWORD PANEL */}
+            {showInlineChangePassword && (
+              <div className="mt-3 p-4 bg-slate-900/90 rounded-2xl border border-slate-700/80 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
+                  <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-sky-400" />
+                    Change Security Password
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowInlineChangePassword(false)}
+                    className="text-slate-400 hover:text-slate-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Confirm Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Repeat new password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-900/90 border border-slate-700 rounded-xl text-white focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={changeLoading}
-                className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-sky-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
-              >
-                {changeLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Updating...
-                  </>
-                ) : (
-                  'Update Password'
+                {changeError && (
+                  <div className="mb-3 p-2 bg-red-950/40 border border-red-800 text-red-300 text-[11px] rounded-xl flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                    <span>{changeError}</span>
+                  </div>
                 )}
-              </button>
-            </form>
+
+                {changeSuccess && (
+                  <div className="mb-3 p-2 bg-emerald-950/40 border border-emerald-800 text-emerald-300 text-[11px] rounded-xl flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                    <span>{changeSuccess}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleChangePasswordSubmit} className="space-y-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-0.5">
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Username to update"
+                      value={changeUsername}
+                      onChange={(e) => setChangeUsername(e.target.value)}
+                      className="w-full text-xs px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-0.5">
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Enter current password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full text-xs px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-0.5">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="Min 4 chars"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full text-xs px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-0.5">
+                        Confirm New
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="Repeat new"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full text-xs px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={changeLoading}
+                    className="w-full py-2 px-3 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 disabled:opacity-50 mt-1"
+                  >
+                    {changeLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Save New Password'
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         )}
       </main>
