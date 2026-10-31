@@ -11,7 +11,15 @@ export async function GET() {
       await Department.insertMany(INITIAL_DEPARTMENTS);
       return NextResponse.json({ success: true, message: `Database initialized and seeded with ${INITIAL_DEPARTMENTS.length} departments and supervisors.`, seeded: true, count: INITIAL_DEPARTMENTS.length });
     }
-    return NextResponse.json({ success: true, message: `Database connected. ${count} departments available.`, seeded: false, count });
+    // Always sync supervisors from seed data so they stay up to date
+    for (const dept of INITIAL_DEPARTMENTS) {
+      await Department.findOneAndUpdate(
+        { name: dept.name },
+        { $set: { supervisors: dept.supervisors } },
+        { upsert: false }
+      );
+    }
+    return NextResponse.json({ success: true, message: `Database connected. ${count} departments available. Supervisors synced.`, seeded: false, count });
   } catch (error) {
     console.error('Database connection error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Failed to connect to database' }, { status: 500 });
