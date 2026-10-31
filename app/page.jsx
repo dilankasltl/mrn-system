@@ -535,6 +535,7 @@ export default function HomePage() {
         currentUser={currentUser}
         onLoginSuccess={handleLoginSuccess}
         onLogout={handleLogout}
+        departments={departments}
       />
 
       {/* MRN Details & Approval / Issue Modal */}

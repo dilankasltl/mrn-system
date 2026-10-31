@@ -15,6 +15,7 @@ import {
   X,
   Users,
   Search,
+  Building2,
 } from 'lucide-react';
 import { SUPERVISORS_DATA } from './LandingPortal';
 
@@ -24,6 +25,7 @@ export default function LoginModal({
   currentUser,
   onLoginSuccess,
   onLogout,
+  departments = [],
 }) {
   const [selectedRoleCategory, setSelectedRoleCategory] = useState(null);
   const [supervisorSearch, setSupervisorSearch] = useState('');
@@ -63,10 +65,35 @@ export default function LoginModal({
 
   if (!isOpen) return null;
 
-  const filteredSupervisors = SUPERVISORS_DATA.filter((s) =>
+  // Build supervisor list from departments data (department-specific)
+  const allSupervisorsFromDepts = departments.flatMap((dept) =>
+    (dept.supervisors || []).map((sup) => {
+      const match = SUPERVISORS_DATA.find(
+        (sd) => sd.name === sup.name && sd.department === dept.name
+      ) || SUPERVISORS_DATA.find((sd) => sd.name === sup.name);
+      return {
+        name: sup.name,
+        department: dept.name,
+        username: match?.username || sup.name.replace(/^(Mr\.|Mrs\.|Ms\.)\s*/i, '').toLowerCase(),
+        defaultPass: match?.defaultPass || `${sup.name.replace(/^(Mr\.|Mrs\.|Ms\.)\s*/i, '').split(' ')[0]}@123`,
+      };
+    })
+  );
+
+  const uniqueSupervisors = allSupervisorsFromDepts.filter(
+    (s, i, arr) => arr.findIndex((x) => x.username === s.username && x.department === s.department) === i
+  );
+
+  const filteredSupervisors = uniqueSupervisors.filter((s) =>
     s.name.toLowerCase().includes(supervisorSearch.toLowerCase()) ||
     s.department.toLowerCase().includes(supervisorSearch.toLowerCase())
   );
+
+  const groupedSupervisors = filteredSupervisors.reduce((acc, s) => {
+    if (!acc[s.department]) acc[s.department] = [];
+    acc[s.department].push(s);
+    return acc;
+  }, {});
 
   const handleSelectRoleCategory = (cat) => {
     setSelectedRoleCategory(cat);
@@ -275,19 +302,32 @@ export default function LoginModal({
               <input type="text" placeholder="Search supervisor or department..." value={supervisorSearch} onChange={(e) => setSupervisorSearch(e.target.value)} className="w-full text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder-slate-400 pl-7 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none" />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2 pointer-events-none" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
-              {filteredSupervisors.map((s) => {
-                const isSelected = selectedSupervisor?.username === s.username;
-                return (
-                  <button key={s.username} type="button" onClick={() => handleSelectSupervisor(s)} className={`p-1.5 px-2 rounded-xl border text-left transition flex items-center justify-between text-xs ${isSelected ? 'border-amber-500 bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-bold' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
-                    <div className="truncate pr-1">
-                      <div className="font-semibold leading-tight">{s.name}</div>
-                      <div className="text-[10px] text-slate-400 truncate">{s.department}</div>
-                    </div>
-                    {isSelected && <CheckCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />}
-                  </button>
-                );
-              })}
+            <div className="max-h-48 overflow-y-auto pr-1 space-y-2.5">
+              {Object.entries(groupedSupervisors).map(([deptName, sups]) => (
+                <div key={deptName}>
+                  <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 px-1 flex items-center gap-1">
+                    <Building2 className="w-3 h-3 text-slate-400" />
+                    {deptName}
+                    <span className="text-slate-400">({sups.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {sups.map((s) => {
+                      const isSelected = selectedSupervisor?.username === s.username && selectedSupervisor?.department === s.department;
+                      return (
+                        <button key={`${s.username}-${s.department}`} type="button" onClick={() => handleSelectSupervisor(s)} className={`p-1.5 px-2 rounded-xl border text-left transition flex items-center justify-between text-xs ${isSelected ? 'border-amber-500 bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-bold' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                          <div className="truncate pr-1">
+                            <div className="font-semibold leading-tight">{s.name}</div>
+                          </div>
+                          {isSelected && <CheckCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {Object.keys(groupedSupervisors).length === 0 && (
+                <div className="text-center text-xs text-slate-400 py-3">No supervisors found.</div>
+              )}
             </div>
             {selectedSupervisor && (
               <div className="mt-2 pt-1.5 border-t border-amber-200 dark:border-slate-700 text-[11px] text-amber-800 dark:text-amber-300 flex items-center justify-between">
