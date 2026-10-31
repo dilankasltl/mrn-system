@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Clock,
   ChevronDown,
+  Home,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -288,24 +289,23 @@ export default function Navbar({
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
-                {/* Department badge / Exit to portal button */}
-                <button
-                  onClick={onExitToPortal}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl transition"
-                  title="Switch / Return to Department Selection Portal"
+                {/* Department badge */}
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/90 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl"
+                  title={`Active Department: ${currentUser.department}`}
                 >
                   <Building2 className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="truncate max-w-[110px] sm:max-w-[150px] font-bold text-white">{currentUser.department}</span>
-                  <span className="text-[10px] bg-slate-900/90 text-slate-400 px-1.5 py-0.5 rounded font-mono">Switch</span>
-                </button>
+                  <span className="truncate max-w-[110px] sm:max-w-[150px]">{currentUser.department}</span>
+                </div>
 
-                {/* Sign In Button */}
+                {/* Home button: Takes Department requester back to Home Portal */}
                 <button
-                  onClick={onOpenLogin}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl shadow transition"
+                  onClick={onExitToPortal}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md shadow-sky-600/20 transition"
+                  title="Return to Home Page"
                 >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>Login</span>
+                  <Home className="w-3.5 h-3.5" />
+                  <span>Home</span>
                 </button>
               </div>
             )}

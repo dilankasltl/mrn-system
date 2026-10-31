@@ -15,6 +15,8 @@ import {
   Loader2,
   Trash2,
   LogIn,
+  Plus,
+  Trash,
 } from 'lucide-react';
 
 interface MRNDetailsModalProps {
@@ -49,6 +51,18 @@ export default function MRNDetailsModal({
       issueQty: it.issueQty !== undefined && it.issueQty > 0 ? it.issueQty : it.requestQty,
       remarks: it.remarks || '',
       isIssued: it.isIssued || false,
+    }))
+  );
+
+  // Local state for supervisor editable items (before approval)
+  const [supervisorItems, setSupervisorItems] = useState(
+    (mrn.items || []).map((it) => ({
+      _id: it._id,
+      itemNo: it.itemNo,
+      description: it.description,
+      requestQty: it.requestQty,
+      unit: it.unit || 'Nos',
+      remarks: it.remarks || '',
     }))
   );
 
@@ -90,14 +104,21 @@ export default function MRNDetailsModal({
     if (actionType === 'vinod') approver = 'Mr. Vinod';
 
     try {
+      const payload: any = {
+        approvalType: actionType,
+        approvedBy: approver,
+        comments: approvalComments,
+      };
+
+      // If supervisor is approving, include possibly edited items
+      if (actionType === 'supervisor') {
+        payload.items = supervisorItems;
+      }
+
       const res = await fetch(`/api/mrn/${mrn._id}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          approvalType: actionType,
-          approvedBy: approver,
-          comments: approvalComments,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -415,7 +436,7 @@ export default function MRNDetailsModal({
                     <div className="font-semibold">Approved by Mr. Vinod</div>
                     {mrn.vinodApproval?.withoutNiranjan && (
                       <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold block">
-                        (Without Niranjan Approval)
+                        (Without Mr. Niranjan Approval)
                       </span>
                     )}
                     <div className="text-purple-700 dark:text-purple-400 text-[10px]">
@@ -577,39 +598,112 @@ export default function MRNDetailsModal({
 
         {/* Interactive Action Control Section based on Role */}
         <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 print:hidden">
-          {/* Sign In prompt if user has no direct action permissions */}
-          {!isIssued && !hasAnyAction && onOpenLogin && (
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Supervisor, Management or Stores Authority?
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Log in with your designated account and password to approve or issue this MRN.
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  onClose();
-                  onOpenLogin();
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl shadow transition"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                Sign In to Take Action
-              </button>
-            </div>
-          )}
+          {/* Action sections below - only show relevant ones */}
 
-          {/* 1. Supervisor Approval Action */}
+          {/* 1. Supervisor Approval Action - WITH EDITABLE ITEMS */}
           {canApproveAsSupervisor && (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl mb-4">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <UserCheck className="w-4 h-4 text-amber-600" />
                 <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide">
-                  Supervisor Sign-Off Required
+                  Supervisor Sign-Off — Review & Edit Items
                 </h4>
               </div>
+
+              {/* Editable items table for Supervisor */}
+              <div className="mb-3 border border-amber-200 dark:border-amber-700 rounded-xl overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 font-semibold">
+                    <tr>
+                      <th className="py-2 px-2 w-10 text-center">#</th>
+                      <th className="py-2 px-2">Description</th>
+                      <th className="py-2 px-2 w-24">Qty</th>
+                      <th className="py-2 px-2 w-20">Unit</th>
+                      <th className="py-2 px-2 w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-100 dark:divide-amber-800 bg-white dark:bg-slate-900">
+                    {supervisorItems.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="py-1.5 px-2 text-center text-amber-500 font-bold">{idx + 1}</td>
+                        <td className="py-1.5 px-1">
+                          <input
+                            type="text"
+                            value={item.description}
+                            onChange={(e) => {
+                              const updated = [...supervisorItems];
+                              updated[idx].description = e.target.value;
+                              setSupervisorItems(updated);
+                            }}
+                            className="w-full text-xs p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none"
+                          />
+                        </td>
+                        <td className="py-1.5 px-1">
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.requestQty}
+                            onChange={(e) => {
+                              const updated = [...supervisorItems];
+                              updated[idx].requestQty = Number(e.target.value) || 0;
+                              setSupervisorItems(updated);
+                            }}
+                            className="w-full text-xs p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none"
+                          />
+                        </td>
+                        <td className="py-1.5 px-1">
+                          <input
+                            type="text"
+                            value={item.unit}
+                            onChange={(e) => {
+                              const updated = [...supervisorItems];
+                              updated[idx].unit = e.target.value;
+                              setSupervisorItems(updated);
+                            }}
+                            className="w-full text-xs p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none"
+                          />
+                        </td>
+                        <td className="py-1.5 px-1 text-center">
+                          {supervisorItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSupervisorItems(supervisorItems.filter((_, i) => i !== idx));
+                              }}
+                              className="text-red-400 hover:text-red-600 transition"
+                            >
+                              <Trash className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Add Item Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSupervisorItems([
+                    ...supervisorItems,
+                    {
+                      _id: undefined,
+                      itemNo: supervisorItems.length + 1,
+                      description: '',
+                      requestQty: 0,
+                      unit: 'Nos',
+                      remarks: '',
+                    },
+                  ]);
+                }}
+                className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 font-semibold hover:underline mb-3"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add New Item
+              </button>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 <input
                   type="text"

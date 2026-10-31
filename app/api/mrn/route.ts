@@ -192,3 +192,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+// Bulk delete all MRNs (Admin only)
+export async function DELETE(req: NextRequest) {
+  try {
+    await connectToDatabase();
+    const { searchParams } = new URL(req.url);
+    const role = searchParams.get('role');
+
+    if (role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Only System Admin can delete all MRNs.' },
+        { status: 403 }
+      );
+    }
+
+    const result = await MRN.deleteMany({});
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully deleted all MRNs (${result.deletedCount} items removed)`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error: any) {
+    console.error('Delete all MRNs error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

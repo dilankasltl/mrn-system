@@ -60,7 +60,7 @@ export default function AnalyticsDashboard({ mrns, stats, loading, onRefresh }: 
             'Supervisor Name': m.supervisorApproval?.approvedBy || '',
             'Mr. Niranjan Approved': m.niranjanApproval?.approved ? 'YES' : 'NO',
             'Mr. Vinod Approved': m.vinodApproval?.approved ? 'YES' : 'NO',
-            'Approved Without Niranjan': m.vinodApproval?.withoutNiranjan ? 'YES' : 'NO',
+            'Approved Without Mr. Niranjan': m.vinodApproval?.withoutNiranjan ? 'YES' : 'NO',
             'Issued by Stores': m.storesIssue?.issued ? 'YES' : 'NO',
             'Stores Officer': m.storesIssue?.issuedBy || '',
             'Stores Remarks': m.storesIssue?.storesRemarks || '',
@@ -109,8 +109,8 @@ export default function AnalyticsDashboard({ mrns, stats, loading, onRefresh }: 
   // Status breakdown data for Pie Chart
   const statusCounts = {
     'Pending Supervisor': mrns.filter((m) => m.status === 'PENDING_SUPERVISOR').length,
-    'Pending Niranjan': mrns.filter((m) => m.supervisorApproval?.approved && !m.niranjanApproval?.approved && m.status !== 'ISSUED').length,
-    'Pending Vinod': mrns.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length,
+    'Pending Mr. Niranjan': mrns.filter((m) => m.supervisorApproval?.approved && !m.niranjanApproval?.approved && m.status !== 'ISSUED').length,
+    'Pending Mr. Vinod': mrns.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length,
     'Ready for Stores': mrns.filter((m) => m.status === 'APPROVED' && !m.storesIssue?.issued).length,
     'Fully Issued': mrns.filter((m) => m.status === 'ISSUED').length,
   };
@@ -179,7 +179,7 @@ export default function AnalyticsDashboard({ mrns, stats, loading, onRefresh }: 
           <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
             {mrns.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length}
           </span>
-          <span className="text-[11px] text-amber-700 dark:text-amber-300 block mt-1">Niranjan / Vinod review</span>
+          <span className="text-[11px] text-amber-700 dark:text-amber-300 block mt-1">Mr. Niranjan / Mr. Vinod review</span>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">

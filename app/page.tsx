@@ -440,7 +440,7 @@ export default function HomePage() {
                 }`}
               >
                 <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">
-                  Pending Niranjan / Vinod
+                  Pending Mr. Niranjan / Mr. Vinod
                 </div>
                 <div className="text-xl font-black text-purple-700 dark:text-purple-400">
                   {mrns.filter(
@@ -563,10 +563,10 @@ export default function HomePage() {
                                 title={
                                   m.niranjanApproval?.approved
                                     ? 'Approved by Mr. Niranjan'
-                                    : 'Niranjan: Pending'
+                                    : 'Mr. Niranjan: Pending'
                                 }
                               >
-                                Niranjan {m.niranjanApproval?.approved ? '✓' : '...'}
+                                Mr. Niranjan {m.niranjanApproval?.approved ? '✓' : '...'}
                               </span>
 
                               {/* Vinod */}
@@ -579,12 +579,12 @@ export default function HomePage() {
                                 title={
                                   m.vinodApproval?.approved
                                     ? m.vinodApproval.withoutNiranjan
-                                      ? 'Approved by Mr. Vinod (Without Niranjan Approval)'
+                                      ? 'Approved by Mr. Vinod (Without Mr. Niranjan Approval)'
                                       : 'Approved by Mr. Vinod'
-                                    : 'Vinod: Pending'
+                                    : 'Mr. Vinod: Pending'
                                 }
                               >
-                                Vinod {m.vinodApproval?.approved ? '✓' : '...'}
+                                Mr. Vinod {m.vinodApproval?.approved ? '✓' : '...'}
                               </span>
                             </div>
                           </td>
@@ -628,6 +628,7 @@ export default function HomePage() {
             onRefreshDepartments={fetchDepartments}
             mrns={mrns}
             onSelectMRN={(m) => setSelectedMRN(m)}
+            onRefreshMRNs={fetchMRNs}
           />
         )}
       </main>

@@ -9,6 +9,7 @@ interface AdminPanelProps {
   onRefreshDepartments: () => void;
   mrns: IMRN[];
   onSelectMRN: (mrn: IMRN) => void;
+  onRefreshMRNs?: () => void;
 }
 
 export default function AdminPanel({
@@ -16,9 +17,11 @@ export default function AdminPanel({
   onRefreshDepartments,
   mrns,
   onSelectMRN,
+  onRefreshMRNs,
 }: AdminPanelProps) {
   const [showModal, setShowModal] = useState(false);
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const [deptName, setDeptName] = useState('');
   const [deptCode, setDeptCode] = useState('');
@@ -26,6 +29,28 @@ export default function AdminPanel({
   const [supervisors, setSupervisors] = useState<string[]>(['']);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+
+  // Delete all MRNs (Admin only)
+  const handleDeleteAllMRNs = async () => {
+    if (!confirm('⚠️ Are you sure you want to DELETE ALL MRNs? This action CANNOT be undone!')) return;
+    if (!confirm('This will permanently remove ALL Material Request Notes from the system. Type OK to confirm.')) return;
+
+    setDeletingAll(true);
+    setMsg('');
+    try {
+      const res = await fetch('/api/mrn?role=admin', { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete all MRNs');
+      }
+      setMsg(`✅ ${data.message}`);
+      if (onRefreshMRNs) onRefreshMRNs();
+    } catch (err: any) {
+      setMsg(`❌ ${err.message || 'Error deleting MRNs'}`);
+    } finally {
+      setDeletingAll(false);
+    }
+  };
 
   // Open modal for creating new department
   const handleOpenAddModal = () => {
@@ -128,13 +153,23 @@ export default function AdminPanel({
           </div>
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl shadow transition active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          Add Department
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDeleteAllMRNs}
+            disabled={deletingAll}
+            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow transition active:scale-95"
+          >
+            <Trash2 className="w-4 h-4" />
+            {deletingAll ? 'Deleting...' : 'Delete All MRNs'}
+          </button>
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl shadow transition active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            Add Department
+          </button>
+        </div>
       </div>
 
       {msg && (

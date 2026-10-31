@@ -24,6 +24,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const now = new Date();
 
     if (approvalType === 'supervisor') {
+      // Supervisor can edit items or add new items before approving
+      if (body.items && Array.isArray(body.items)) {
+        mrn.items = body.items
+          .filter((it: any) => it.description && it.description.trim() !== '')
+          .map((it: any, idx: number) => ({
+            itemNo: idx + 1,
+            description: it.description.trim(),
+            requestQty: Number(it.requestQty) || 0,
+            unit: it.unit ? it.unit.trim() : 'Nos',
+            issueQty: it.issueQty || 0,
+            remarks: it.remarks ? it.remarks.trim() : '',
+            isIssued: false,
+          }));
+      }
+
       // Supervisor Approval
       mrn.supervisorApproval = {
         approved: true,
