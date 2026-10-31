@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { IMRN } from '@/types';
 import * as XLSX from 'xlsx';
 import {
   BarChart,
@@ -17,17 +16,10 @@ import {
 } from 'recharts';
 import { Download, BarChart2, Table as TableIcon, CheckCircle, Clock, PackageCheck, FileSpreadsheet } from 'lucide-react';
 
-interface AnalyticsProps {
-  mrns: IMRN[];
-  stats: any;
-  loading: boolean;
-  onRefresh: () => void;
-}
-
 const COLORS = ['#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#64748b'];
 
-export default function AnalyticsDashboard({ mrns, stats, loading, onRefresh }: AnalyticsProps) {
-  const [viewMode, setViewMode] = useState<'both' | 'charts' | 'table'>('both');
+export default function AnalyticsDashboard({ mrns, stats, loading, onRefresh }) {
+  const [viewMode, setViewMode] = useState('both');
 
   // Export to Excel function
   const handleExportToExcel = () => {
@@ -37,7 +29,7 @@ export default function AnalyticsDashboard({ mrns, stats, loading, onRefresh }: 
     }
 
     // Flatten data for detailed items export
-    const rows: any[] = [];
+    const rows = [];
 
     mrns.forEach((m) => {
       if (m.items && m.items.length > 0) {
@@ -90,7 +82,7 @@ export default function AnalyticsDashboard({ mrns, stats, loading, onRefresh }: 
   };
 
   // Prepare chart data: Department-wise request vs issued
-  const deptDataMap: { [key: string]: { department: string; requested: number; issued: number; count: number } } = {};
+  const deptDataMap = {};
 
   mrns.forEach((m) => {
     const dept = m.department || 'Other';

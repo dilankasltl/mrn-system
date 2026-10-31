@@ -1,24 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CurrentUser, IDepartment } from '@/types';
 import { Plus, Trash2, AlertCircle, CheckCircle, Loader2, X } from 'lucide-react';
-
-interface NewMRNModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  currentUser: CurrentUser;
-  departments: IDepartment[];
-  onMRNCreated: (mrn: any) => void;
-}
-
-interface ItemRow {
-  itemNo: number;
-  description: string;
-  requestQty: number | '';
-  unit: string;
-  remarks: string;
-}
 
 export default function NewMRNModal({
   isOpen,
@@ -26,7 +9,7 @@ export default function NewMRNModal({
   currentUser,
   departments,
   onMRNCreated,
-}: NewMRNModalProps) {
+}) {
   const [department, setDepartment] = useState(currentUser.department || 'Engineering');
   const [requestedBy, setRequestedBy] = useState(currentUser.name || '');
   const [shift, setShift] = useState('General');
@@ -41,8 +24,8 @@ export default function NewMRNModal({
     }
   }, [isOpen, currentUser]);
 
-  // Default 3 rows as explicitly required: "defult rule 3k thynna ona madi unoth add krgnna plwn wenna ona"
-  const [items, setItems] = useState<ItemRow[]>([
+  // Default 3 rows
+  const [items, setItems] = useState([
     { itemNo: 1, description: '', requestQty: '', unit: 'Nos', remarks: '' },
     { itemNo: 2, description: '', requestQty: '', unit: 'Nos', remarks: '' },
     { itemNo: 3, description: '', requestQty: '', unit: 'Nos', remarks: '' },
@@ -67,7 +50,7 @@ export default function NewMRNModal({
     ]);
   };
 
-  const handleRemoveItem = (index: number) => {
+  const handleRemoveItem = (index) => {
     if (items.length <= 1) return;
     const newItems = items
       .filter((_, i) => i !== index)
@@ -75,13 +58,13 @@ export default function NewMRNModal({
     setItems(newItems);
   };
 
-  const handleItemChange = (index: number, field: keyof ItemRow, value: any) => {
+  const handleItemChange = (index, field, value) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
     setItems(newItems);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
@@ -132,7 +115,7 @@ export default function NewMRNModal({
       setTimeout(() => {
         onClose();
       }, 1200);
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message || 'Error occurred while saving MRN');
     } finally {
       setLoading(false);

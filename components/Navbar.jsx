@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CurrentUser, IDepartment, IMRN } from '@/types';
 import {
   Building2,
   Search,
@@ -20,22 +19,6 @@ import {
   Home,
 } from 'lucide-react';
 
-interface NavbarProps {
-  currentUser: CurrentUser;
-  departments: IDepartment[];
-  onOpenNewMRN: () => void;
-  onSearchMRN: (mrnNo: string) => void;
-  activeTab: 'mrns' | 'analytics' | 'admin';
-  setActiveTab: (tab: 'mrns' | 'analytics' | 'admin') => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
-  onOpenLogin: () => void;
-  onLogout: () => void;
-  onExitToPortal: () => void;
-  mrns: IMRN[];
-  onSelectMRN: (mrn: IMRN) => void;
-}
-
 export default function Navbar({
   currentUser,
   departments,
@@ -50,18 +33,18 @@ export default function Navbar({
   onExitToPortal,
   mrns,
   onSelectMRN,
-}: NavbarProps) {
+}) {
   const [searchInput, setSearchInput] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e) => {
     e.preventDefault();
     if (searchInput.trim()) {
       onSearchMRN(searchInput.trim());
     }
   };
 
-  // Determine user display label (Notice: "Mr.Niranan Management kyl danna epa")
+  // Determine user display label
   const getUserDisplayLabel = () => {
     switch (currentUser.role) {
       case 'management_niranjan':
@@ -127,8 +110,6 @@ export default function Navbar({
   const pendingNotifications = getPendingNotifications();
   const notifCount = pendingNotifications.length;
 
-  // Crucial requirement:
-  // "Anika bn Mr.Niranjanta,Mr.Vinodta,Adminta,Supervisorslata New Mrn Create kyl penanna ona na bn."
   // Only Department role can create New MRN!
   const canCreateNewMRN = currentUser.role === 'department';
 

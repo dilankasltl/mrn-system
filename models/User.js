@@ -1,16 +1,6 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose from 'mongoose';
 
-export interface IUserDocument extends Document {
-  username: string;
-  name: string;
-  role: 'admin' | 'management_niranjan' | 'management_vinod' | 'stores' | 'supervisor';
-  department?: string;
-  password: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const UserSchema = new Schema<IUserDocument>(
+const UserSchema = new mongoose.Schema(
   {
     username: {
       type: String,
@@ -43,8 +33,6 @@ const UserSchema = new Schema<IUserDocument>(
   }
 );
 
-const User: Model<IUserDocument> =
-  (mongoose.models.User as Model<IUserDocument>) ||
-  mongoose.model<IUserDocument>('User', UserSchema);
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 export default User;

@@ -1,16 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { IDepartment, IMRN } from '@/types';
 import { Plus, Trash2, Edit3, Shield, Users, Building, Check, Loader2, X } from 'lucide-react';
-
-interface AdminPanelProps {
-  departments: IDepartment[];
-  onRefreshDepartments: () => void;
-  mrns: IMRN[];
-  onSelectMRN: (mrn: IMRN) => void;
-  onRefreshMRNs?: () => void;
-}
 
 export default function AdminPanel({
   departments,
@@ -18,15 +9,15 @@ export default function AdminPanel({
   mrns,
   onSelectMRN,
   onRefreshMRNs,
-}: AdminPanelProps) {
+}) {
   const [showModal, setShowModal] = useState(false);
-  const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [editingDeptId, setEditingDeptId] = useState(null);
   const [deletingAll, setDeletingAll] = useState(false);
 
   const [deptName, setDeptName] = useState('');
   const [deptCode, setDeptCode] = useState('');
   const [deptCategory, setDeptCategory] = useState('Operations');
-  const [supervisors, setSupervisors] = useState<string[]>(['']);
+  const [supervisors, setSupervisors] = useState(['']);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -45,7 +36,7 @@ export default function AdminPanel({
       }
       setMsg(`✅ ${data.message}`);
       if (onRefreshMRNs) onRefreshMRNs();
-    } catch (err: any) {
+    } catch (err) {
       setMsg(`❌ ${err.message || 'Error deleting MRNs'}`);
     } finally {
       setDeletingAll(false);
@@ -63,8 +54,8 @@ export default function AdminPanel({
   };
 
   // Open modal for editing existing department & supervisors
-  const handleOpenEditModal = (dept: IDepartment) => {
-    setEditingDeptId(dept._id as string);
+  const handleOpenEditModal = (dept) => {
+    setEditingDeptId(dept._id);
     setDeptName(dept.name);
     setDeptCode(dept.code || '');
     setDeptCategory(dept.category || 'Operations');
@@ -78,19 +69,19 @@ export default function AdminPanel({
     setSupervisors([...supervisors, '']);
   };
 
-  const handleSupervisorChange = (index: number, val: string) => {
+  const handleSupervisorChange = (index, val) => {
     const updated = [...supervisors];
     updated[index] = val;
     setSupervisors(updated);
   };
 
-  const handleRemoveSupervisorField = (index: number) => {
+  const handleRemoveSupervisorField = (index) => {
     if (supervisors.length <= 1) return;
     setSupervisors(supervisors.filter((_, i) => i !== index));
   };
 
   // Submit Department (Create or Update)
-  const handleSubmitDepartment = async (e: React.FormEvent) => {
+  const handleSubmitDepartment = async (e) => {
     e.preventDefault();
     setMsg('');
     if (!deptName.trim()) return;
@@ -127,7 +118,7 @@ export default function AdminPanel({
       );
       setShowModal(false);
       onRefreshDepartments();
-    } catch (err: any) {
+    } catch (err) {
       setMsg(err.message || 'Error occurred');
     } finally {
       setLoading(false);

@@ -1,25 +1,6 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
-import { IMRNItem, MRNStatus, IApprovalDetail, IStoresIssueDetail } from '../types';
+import mongoose from 'mongoose';
 
-export interface IMRNDocument extends Document {
-  mrnNo: string;
-  department: string;
-  requestedBy: string;
-  shift?: string;
-  date: Date;
-  generalRemarks?: string;
-  items: IMRNItem[];
-  status: MRNStatus;
-  supervisorApproval: IApprovalDetail;
-  niranjanApproval: IApprovalDetail;
-  vinodApproval: IApprovalDetail;
-  storesIssue: IStoresIssueDetail;
-  isLocked: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const MRNItemSchema = new Schema<IMRNItem>(
+const MRNItemSchema = new mongoose.Schema(
   {
     itemNo: { type: Number, required: true },
     description: { type: String, required: true, trim: true },
@@ -33,7 +14,7 @@ const MRNItemSchema = new Schema<IMRNItem>(
   { _id: true }
 );
 
-const ApprovalDetailSchema = new Schema<IApprovalDetail>(
+const ApprovalDetailSchema = new mongoose.Schema(
   {
     approved: { type: Boolean, default: false },
     approvedBy: { type: String, default: '' },
@@ -44,7 +25,7 @@ const ApprovalDetailSchema = new Schema<IApprovalDetail>(
   { _id: false }
 );
 
-const StoresIssueDetailSchema = new Schema<IStoresIssueDetail>(
+const StoresIssueDetailSchema = new mongoose.Schema(
   {
     issued: { type: Boolean, default: false },
     issuedBy: { type: String, default: '' },
@@ -54,7 +35,7 @@ const StoresIssueDetailSchema = new Schema<IStoresIssueDetail>(
   { _id: false }
 );
 
-const MRNSchema = new Schema<IMRNDocument>(
+const MRNSchema = new mongoose.Schema(
   {
     mrnNo: {
       type: String,
@@ -90,7 +71,7 @@ const MRNSchema = new Schema<IMRNDocument>(
     },
     items: {
       type: [MRNItemSchema],
-      validate: [(val: IMRNItem[]) => val.length > 0, 'At least one item is required'],
+      validate: [(val) => val.length > 0, 'At least one item is required'],
     },
     status: {
       type: String,
@@ -133,8 +114,6 @@ const MRNSchema = new Schema<IMRNDocument>(
   }
 );
 
-const MRN: Model<IMRNDocument> =
-  (mongoose.models.MRN as Model<IMRNDocument>) ||
-  mongoose.model<IMRNDocument>('MRN', MRNSchema);
+const MRN = mongoose.models.MRN || mongoose.model('MRN', MRNSchema);
 
 export default MRN;

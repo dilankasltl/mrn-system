@@ -8,7 +8,6 @@ import MRNDetailsModal from '@/components/MRNDetailsModal';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import AdminPanel from '@/components/AdminPanel';
 import LoginModal from '@/components/LoginModal';
-import { IMRN, IDepartment, CurrentUser } from '@/types';
 import {
   Search,
   Filter,
@@ -27,14 +26,10 @@ import {
 } from 'lucide-react';
 
 export default function HomePage() {
-  // Theme state: 'light' or 'dark'
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState('light');
+  const [viewMode, setViewMode] = useState('portal');
 
-  // View state: 'portal' (initial landing/department selection) or 'dashboard'
-  const [viewMode, setViewMode] = useState<'portal' | 'dashboard'>('portal');
-
-  // Current logged in user / role
-  const [currentUser, setCurrentUser] = useState<CurrentUser>({
+  const [currentUser, setCurrentUser] = useState({
     id: 'guest',
     name: 'Department Requester',
     role: 'department',
@@ -42,27 +37,24 @@ export default function HomePage() {
     isAuthenticated: false,
   });
 
-  const [departments, setDepartments] = useState<IDepartment[]>([]);
-  const [mrns, setMrns] = useState<IMRN[]>([]);
+  const [departments, setDepartments] = useState([]);
+  const [mrns, setMrns] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState(null);
 
-  // Active navigation tab on dashboard
-  const [activeTab, setActiveTab] = useState<'mrns' | 'analytics' | 'admin'>('mrns');
+  const [activeTab, setActiveTab] = useState('mrns');
 
-  // Modals state
   const [isNewMRNModalOpen, setIsNewMRNModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [selectedMRN, setSelectedMRN] = useState<IMRN | null>(null);
+  const [selectedMRN, setSelectedMRN] = useState(null);
 
-  // Filter & Search states
-  const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('ALL');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState('ALL');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Manage Theme (persisted in localStorage and applied to <html> element)
+  // Manage Theme
   useEffect(() => {
-    const savedTheme = (localStorage.getItem('sundaram_theme') as 'light' | 'dark') || 'light';
+    const savedTheme = localStorage.getItem('sundaram_theme') || 'light';
     setTheme(savedTheme);
     if (savedTheme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -82,7 +74,7 @@ export default function HomePage() {
     }
   };
 
-  // Restore saved session if user was logged in previously
+  // Restore saved session
   useEffect(() => {
     try {
       const savedUserStr = localStorage.getItem('sundaram_mrn_user');
@@ -117,9 +109,6 @@ export default function HomePage() {
     try {
       const params = new URLSearchParams();
 
-      // Strict Department Isolation Rule:
-      // Only Admin, Stores, Niranjan, and Vinod can view all or switch departments.
-      // Department requesters and Supervisors are strictly locked to their chosen department.
       const isGlobalManager = ['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser.role);
       const activeDept = isGlobalManager ? selectedDeptFilter : (currentUser.department || 'Production');
 
@@ -182,7 +171,7 @@ export default function HomePage() {
   }, [fetchDepartments, fetchMRNs, fetchStats]);
 
   // Handle Search for single MRN
-  const handleSearchMRN = async (mrnNo: string) => {
+  const handleSearchMRN = async (mrnNo) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/mrn/${mrnNo}`);
@@ -191,7 +180,6 @@ export default function HomePage() {
         setSelectedMRN(data.mrn);
         setViewMode('dashboard');
       } else {
-        // Fallback search
         setSearchQuery(mrnNo);
         setViewMode('dashboard');
         fetchMRNs();
@@ -206,9 +194,8 @@ export default function HomePage() {
   };
 
   // Select Department from Entrance Portal
-  // Requirement: "Department eka thoragaththt passe thama bn oi page ekt enna ona."
-  const handleSelectDepartment = (deptName: string) => {
-    const deptUser: CurrentUser = {
+  const handleSelectDepartment = (deptName) => {
+    const deptUser = {
       id: `dept-${deptName}`,
       name: `${deptName} Officer`,
       role: 'department',
@@ -221,7 +208,7 @@ export default function HomePage() {
   };
 
   // Handle successful login
-  const handleLoginSuccess = (loggedUser: CurrentUser) => {
+  const handleLoginSuccess = (loggedUser) => {
     setCurrentUser(loggedUser);
     if (loggedUser.role === 'supervisor' && loggedUser.department) {
       setSelectedDeptFilter(loggedUser.department);
@@ -234,7 +221,6 @@ export default function HomePage() {
   };
 
   // Handle Logout
-  // Requirement: "ado Log unt passe logout ekkth dpn. ekm Log unt passe namath pennwpn"
   const handleLogout = () => {
     localStorage.removeItem('sundaram_mrn_user');
     setCurrentUser({
@@ -249,7 +235,7 @@ export default function HomePage() {
   };
 
   // Helper: Status Badge
-  const renderStatusBadge = (mrn: IMRN) => {
+  const renderStatusBadge = (mrn) => {
     if (mrn.isLocked || mrn.status === 'ISSUED') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
@@ -343,7 +329,6 @@ export default function HomePage() {
 
               {/* Department & Status Filters */}
               <div className="flex flex-wrap items-center gap-2">
-                {/* Department: Dropdown for Global Management & Stores, LOCKED BADGE for Department Requester / Supervisor */}
                 {['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser.role) ? (
                   <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs">
                     <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
@@ -391,10 +376,7 @@ export default function HomePage() {
 
                 {/* Refresh Button */}
                 <button
-                  onClick={() => {
-                    fetchMRNs();
-                    fetchStats();
-                  }}
+                  onClick={() => { fetchMRNs(); fetchStats(); }}
                   className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 transition"
                   title="Refresh MRN List"
                 >
@@ -405,61 +387,26 @@ export default function HomePage() {
 
             {/* Quick Summary Pill Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div
-                onClick={() => setSelectedStatusFilter('ALL')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
-                  selectedStatusFilter === 'ALL'
-                    ? 'bg-sky-50/80 dark:bg-sky-950/40 border-sky-300 dark:border-sky-800 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
+              <div onClick={() => setSelectedStatusFilter('ALL')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'ALL' ? 'bg-sky-50/80 dark:bg-sky-950/40 border-sky-300 dark:border-sky-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
                 <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Total Listed</div>
                 <div className="text-xl font-black text-slate-900 dark:text-white">{mrns.length}</div>
               </div>
 
-              <div
-                onClick={() => setSelectedStatusFilter('PENDING_SUPERVISOR')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
-                  selectedStatusFilter === 'PENDING_SUPERVISOR'
-                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
+              <div onClick={() => setSelectedStatusFilter('PENDING_SUPERVISOR')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'PENDING_SUPERVISOR' ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
                 <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase">Pending Supervisor</div>
                 <div className="text-xl font-black text-amber-700 dark:text-amber-400">
                   {mrns.filter((m) => m.status === 'PENDING_SUPERVISOR').length}
                 </div>
               </div>
 
-              <div
-                onClick={() => setSelectedStatusFilter('PENDING_MANAGEMENT')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
-                  selectedStatusFilter === 'PENDING_MANAGEMENT'
-                    ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">
-                  Pending Mr. Niranjan / Mr. Vinod
-                </div>
+              <div onClick={() => setSelectedStatusFilter('PENDING_MANAGEMENT')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'PENDING_MANAGEMENT' ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
+                <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">Pending Mr. Niranjan / Mr. Vinod</div>
                 <div className="text-xl font-black text-purple-700 dark:text-purple-400">
-                  {mrns.filter(
-                    (m) =>
-                      m.supervisorApproval?.approved &&
-                      !m.vinodApproval?.approved &&
-                      m.status !== 'ISSUED'
-                  ).length}
+                  {mrns.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length}
                 </div>
               </div>
 
-              <div
-                onClick={() => setSelectedStatusFilter('ISSUED')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
-                  selectedStatusFilter === 'ISSUED'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
+              <div onClick={() => setSelectedStatusFilter('ISSUED')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'ISSUED' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
                 <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">Issued & Locked</div>
                 <div className="text-xl font-black text-emerald-700 dark:text-emerald-400">
                   {mrns.filter((m) => m.status === 'ISSUED').length}
@@ -467,7 +414,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* MRN Table / Cards */}
+            {/* MRN Table */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -505,94 +452,33 @@ export default function HomePage() {
                           onClick={() => setSelectedMRN(m)}
                           className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition"
                         >
-                          {/* MRN Number */}
                           <td className="py-3 px-4">
-                            <span className="font-bold text-sky-700 dark:text-sky-400 hover:underline font-mono">
-                              {m.mrnNo}
-                            </span>
+                            <span className="font-bold text-sky-700 dark:text-sky-400 hover:underline font-mono">{m.mrnNo}</span>
                           </td>
-
-                          {/* Department */}
                           <td className="py-3 px-4">
                             <div className="font-semibold text-slate-800 dark:text-slate-200">{m.department}</div>
                             <div className="text-[11px] text-slate-400">{m.shift || 'General'}</div>
                           </td>
-
-                          {/* Requested By */}
                           <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">{m.requestedBy}</td>
-
-                          {/* Date */}
-                          <td className="py-3 px-4 text-slate-500 dark:text-slate-400">
-                            {new Date(m.date).toLocaleDateString()}
-                          </td>
-
-                          {/* Items Count */}
+                          <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{new Date(m.date).toLocaleDateString()}</td>
                           <td className="py-3 px-4 text-center">
-                            <span className="font-bold text-slate-700 dark:text-slate-300">
-                              {m.items?.length || 0}
-                            </span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{m.items?.length || 0}</span>
                             <span className="text-[10px] text-slate-400 block">items</span>
                           </td>
-
-                          {/* Approvals Journey Badges */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5">
-                              {/* Sup */}
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                                  m.supervisorApproval?.approved
-                                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                                }`}
-                                title={
-                                  m.supervisorApproval?.approved
-                                    ? `Supervisor: ${m.supervisorApproval.approvedBy}`
-                                    : 'Supervisor: Pending'
-                                }
-                              >
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.supervisorApproval?.approved ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.supervisorApproval?.approved ? `Supervisor: ${m.supervisorApproval.approvedBy}` : 'Supervisor: Pending'}>
                                 Sup {m.supervisorApproval?.approved ? '✓' : '...'}
                               </span>
-
-                              {/* Niranjan */}
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                                  m.niranjanApproval?.approved
-                                    ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                                }`}
-                                title={
-                                  m.niranjanApproval?.approved
-                                    ? 'Approved by Mr. Niranjan'
-                                    : 'Mr. Niranjan: Pending'
-                                }
-                              >
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.niranjanApproval?.approved ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.niranjanApproval?.approved ? 'Approved by Mr. Niranjan' : 'Mr. Niranjan: Pending'}>
                                 Mr. Niranjan {m.niranjanApproval?.approved ? '✓' : '...'}
                               </span>
-
-                              {/* Vinod */}
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                                  m.vinodApproval?.approved
-                                    ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                                }`}
-                                title={
-                                  m.vinodApproval?.approved
-                                    ? m.vinodApproval.withoutNiranjan
-                                      ? 'Approved by Mr. Vinod (Without Mr. Niranjan Approval)'
-                                      : 'Approved by Mr. Vinod'
-                                    : 'Mr. Vinod: Pending'
-                                }
-                              >
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.vinodApproval?.approved ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.vinodApproval?.approved ? (m.vinodApproval.withoutNiranjan ? 'Approved by Mr. Vinod (Without Mr. Niranjan Approval)' : 'Approved by Mr. Vinod') : 'Mr. Vinod: Pending'}>
                                 Mr. Vinod {m.vinodApproval?.approved ? '✓' : '...'}
                               </span>
                             </div>
                           </td>
-
-                          {/* Overall Status */}
                           <td className="py-3 px-4 text-center">{renderStatusBadge(m)}</td>
-
-                          {/* Action */}
                           <td className="py-3 px-4 text-center">
                             <span className="inline-flex items-center gap-0.5 text-sky-600 dark:text-sky-400 font-bold hover:underline">
                               View <ChevronRight className="w-3.5 h-3.5" />
@@ -614,14 +500,11 @@ export default function HomePage() {
             mrns={mrns}
             stats={stats}
             loading={loading}
-            onRefresh={() => {
-              fetchMRNs();
-              fetchStats();
-            }}
+            onRefresh={() => { fetchMRNs(); fetchStats(); }}
           />
         )}
 
-        {/* Tab 3: Admin Console (Only visible when logged in as admin) */}
+        {/* Tab 3: Admin Console */}
         {activeTab === 'admin' && currentUser.role === 'admin' && (
           <AdminPanel
             departments={departments}
@@ -633,7 +516,7 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* New MRN Creation Modal (Only for department requesters) */}
+      {/* New MRN Creation Modal */}
       <NewMRNModal
         isOpen={isNewMRNModalOpen}
         onClose={() => setIsNewMRNModalOpen(false)}

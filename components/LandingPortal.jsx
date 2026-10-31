@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { IDepartment, CurrentUser } from '@/types';
 import {
   Building2,
   Lock,
@@ -21,15 +20,6 @@ import {
   ChevronDown,
   X,
 } from 'lucide-react';
-
-interface LandingPortalProps {
-  departments: IDepartment[];
-  onSelectDepartment: (deptName: string) => void;
-  onLoginSuccess: (user: CurrentUser) => void;
-  onSearchMRN: (mrnNo: string) => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
-}
 
 export const SUPERVISORS_DATA = [
   { username: 'dilanka', name: 'Mr. Dilanka', department: 'Engineering', defaultPass: 'Dilanka@123' },
@@ -62,16 +52,16 @@ export default function LandingPortal({
   onSearchMRN,
   theme,
   onToggleTheme,
-}: LandingPortalProps) {
+}) {
   // Portal navigation tab: Only Department Access OR Office Sign In
-  const [activePortalTab, setActivePortalTab] = useState<'departments' | 'login'>('departments');
+  const [activePortalTab, setActivePortalTab] = useState('departments');
   const [deptSearch, setDeptSearch] = useState('');
   const [trackInput, setTrackInput] = useState('');
 
-  // Selected Office Sign In category: 'supervisors' | 'niranjan' | 'vinod' | 'stores' | null
-  const [selectedRoleCategory, setSelectedRoleCategory] = useState<'supervisors' | 'niranjan' | 'vinod' | 'stores' | null>(null);
+  // Selected Office Sign In category
+  const [selectedRoleCategory, setSelectedRoleCategory] = useState(null);
   const [supervisorSearch, setSupervisorSearch] = useState('');
-  const [selectedSupervisor, setSelectedSupervisor] = useState<typeof SUPERVISORS_DATA[0] | null>(null);
+  const [selectedSupervisor, setSelectedSupervisor] = useState(null);
 
   // Login form state
   const [username, setUsername] = useState('');
@@ -90,7 +80,7 @@ export default function LandingPortal({
   const [changeError, setChangeError] = useState('');
   const [changeSuccess, setChangeSuccess] = useState('');
 
-  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef(null);
 
   // Filter departments by search
   const filteredDepartments = departments.filter((d) =>
@@ -104,7 +94,7 @@ export default function LandingPortal({
     s.department.toLowerCase().includes(supervisorSearch.toLowerCase())
   );
 
-  const handleTrackSubmit = (e: React.FormEvent) => {
+  const handleTrackSubmit = (e) => {
     e.preventDefault();
     if (trackInput.trim()) {
       onSearchMRN(trackInput.trim());
@@ -112,12 +102,11 @@ export default function LandingPortal({
   };
 
   // Handle clicking on one of the 4 Office Sign In categories
-  const handleSelectRoleCategory = (category: 'supervisors' | 'niranjan' | 'vinod' | 'stores') => {
+  const handleSelectRoleCategory = (category) => {
     setSelectedRoleCategory(category);
     setLoginError('');
 
     if (category === 'supervisors') {
-      // Keep username empty until supervisor is picked from the list
       if (selectedSupervisor) {
         setUsername(selectedSupervisor.username);
         setChangeUsername(selectedSupervisor.username);
@@ -146,7 +135,7 @@ export default function LandingPortal({
   };
 
   // Handle picking a supervisor from the list
-  const handleSelectSupervisor = (sup: typeof SUPERVISORS_DATA[0]) => {
+  const handleSelectSupervisor = (sup) => {
     setSelectedSupervisor(sup);
     setUsername(sup.username);
     setChangeUsername(sup.username);
@@ -155,7 +144,7 @@ export default function LandingPortal({
     passwordInputRef.current?.focus();
   };
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoginError('');
 
@@ -181,7 +170,7 @@ export default function LandingPortal({
         throw new Error(data.error || 'Invalid credentials');
       }
 
-      const loggedUser: CurrentUser = {
+      const loggedUser = {
         id: data.user.id,
         name: data.user.name,
         username: data.user.username,
@@ -192,14 +181,14 @@ export default function LandingPortal({
 
       localStorage.setItem('sundaram_mrn_user', JSON.stringify(loggedUser));
       onLoginSuccess(loggedUser);
-    } catch (err: any) {
+    } catch (err) {
       setLoginError(err.message || 'Login failed. Please check credentials.');
     } finally {
       setLoginLoading(false);
     }
   };
 
-  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+  const handleChangePasswordSubmit = async (e) => {
     e.preventDefault();
     setChangeError('');
     setChangeSuccess('');
@@ -246,7 +235,7 @@ export default function LandingPortal({
         setShowInlineChangePassword(false);
         setChangeSuccess('');
       }, 2000);
-    } catch (err: any) {
+    } catch (err) {
       setChangeError(err.message || 'Error updating password');
     } finally {
       setChangeLoading(false);
@@ -331,7 +320,7 @@ export default function LandingPortal({
           </p>
         </div>
 
-        {/* Portal Mode Tabs: ONLY 2 Tabs as requested (Change Password moved inline under login form) */}
+        {/* Portal Mode Tabs */}
         <div className="flex bg-slate-800/80 p-1.5 rounded-2xl max-w-md mx-auto w-full mb-6 border border-slate-700 shadow-xl">
           <button
             type="button"
@@ -424,13 +413,12 @@ export default function LandingPortal({
               </p>
             </div>
 
-            {/* 4 Official Roles: Supervisors | Mr. Niranjan | Mr. Vinod | Stores */}
+            {/* 4 Official Roles */}
             <div className="mb-5">
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">
                 Select Sign In Role
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {/* 1. Supervisors */}
                 <button
                   type="button"
                   onClick={() => handleSelectRoleCategory('supervisors')}
@@ -444,7 +432,6 @@ export default function LandingPortal({
                   <span className="block truncate font-semibold">Supervisors</span>
                 </button>
 
-                {/* 2. Mr. Niranjan */}
                 <button
                   type="button"
                   onClick={() => handleSelectRoleCategory('niranjan')}
@@ -458,7 +445,6 @@ export default function LandingPortal({
                   <span className="block truncate font-semibold">Mr. Niranjan</span>
                 </button>
 
-                {/* 3. Mr. Vinod */}
                 <button
                   type="button"
                   onClick={() => handleSelectRoleCategory('vinod')}
@@ -472,7 +458,6 @@ export default function LandingPortal({
                   <span className="block truncate font-semibold">Mr. Vinod</span>
                 </button>
 
-                {/* 4. Stores */}
                 <button
                   type="button"
                   onClick={() => handleSelectRoleCategory('stores')}
@@ -488,7 +473,7 @@ export default function LandingPortal({
               </div>
             </div>
 
-            {/* SUPERVISORS LIST VIEW: Appears when 'Supervisors' is selected */}
+            {/* SUPERVISORS LIST VIEW */}
             {selectedRoleCategory === 'supervisors' && (
               <div className="mb-5 p-3.5 bg-slate-900/90 rounded-2xl border border-amber-500/40 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-800">
@@ -501,7 +486,6 @@ export default function LandingPortal({
                   </span>
                 </div>
 
-                {/* Search filter for supervisors */}
                 <div className="relative mb-2.5">
                   <input
                     type="text"
@@ -513,7 +497,6 @@ export default function LandingPortal({
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2 pointer-events-none" />
                 </div>
 
-                {/* Scrollable list of supervisors with their departments */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
                   {filteredSupervisors.map((s) => {
                     const isSelected = selectedSupervisor?.username === s.username;
@@ -645,7 +628,7 @@ export default function LandingPortal({
               </button>
             </form>
 
-            {/* SUBTLE INLINE CHANGE PASSWORD BUTTON: Exactly right below login button */}
+            {/* SUBTLE INLINE CHANGE PASSWORD BUTTON */}
             <div className="mt-4 pt-3 border-t border-slate-800 text-center">
               <button
                 type="button"
