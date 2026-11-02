@@ -157,14 +157,18 @@ export default function HomePage() {
   // Initialize Data
   useEffect(() => {
     const initApp = async () => {
+      // Fetch departments immediately (don't wait for init)
+      fetchDepartments();
+      // Run init + MRNs + stats in parallel
       try {
-        await fetch('/api/init');
+        await Promise.all([
+          fetch('/api/init').catch((e) => console.error('Init error', e)),
+          fetchMRNs(),
+          fetchStats(),
+        ]);
       } catch (e) {
         console.error('Init error', e);
       }
-      await fetchDepartments();
-      await fetchMRNs();
-      await fetchStats();
     };
 
     initApp();
