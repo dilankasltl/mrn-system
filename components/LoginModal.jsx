@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Lock,
   User,
@@ -65,35 +65,40 @@ export default function LoginModal({
 
   if (!isOpen) return null;
 
-  // Build supervisor list from departments data (department-specific)
-  const allSupervisorsFromDepts = departments.flatMap((dept) =>
-    (dept.supervisors || []).map((sup) => {
-      const match = SUPERVISORS_DATA.find(
-        (sd) => sd.name === sup.name && sd.department === dept.name
-      ) || SUPERVISORS_DATA.find((sd) => sd.name === sup.name);
-      return {
-        name: sup.name,
-        department: dept.name,
-        username: match?.username || sup.name.replace(/^(Mr\.|Mrs\.|Ms\.)\s*/i, '').toLowerCase(),
-        defaultPass: match?.defaultPass || `${sup.name.replace(/^(Mr\.|Mrs\.|Ms\.)\s*/i, '').split(' ')[0]}@123`,
-      };
-    })
-  );
+  // Build supervisor list from departments data (each unique supervisor person shown once with their departments)
+  const uniqueSupervisors = useMemo(() => {
+    const map = new Map();
+    departments.forEach((dept) => {
+      (dept.supervisors || []).forEach((sup) => {
+        const normName = sup.name.trim();
+        const match = SUPERVISORS_DATA.find((sd) => sd.name === normName && sd.department === dept.name) ||
+          SUPERVISORS_DATA.find((sd) => sd.name === normName);
+        const username = match?.username || normName.replace(/^(Mr\.|Mrs\.|Ms\.)\s*/i, '').toLowerCase();
+        const defaultPass = match?.defaultPass || `${normName.replace(/^(Mr\.|Mrs\.|Ms\.)\s*/i, '').split(' ')[0]}@123`;
 
-  const uniqueSupervisors = allSupervisorsFromDepts.filter(
-    (s, i, arr) => arr.findIndex((x) => x.username === s.username && x.department === s.department) === i
-  );
+        if (!map.has(normName)) {
+          map.set(normName, {
+            name: normName,
+            username,
+            defaultPass,
+            departments: [dept.name],
+          });
+        } else {
+          const entry = map.get(normName);
+          if (!entry.departments.includes(dept.name)) {
+            entry.departments.push(dept.name);
+          }
+        }
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [departments]);
 
+  // Filter supervisors by search
   const filteredSupervisors = uniqueSupervisors.filter((s) =>
     s.name.toLowerCase().includes(supervisorSearch.toLowerCase()) ||
-    s.department.toLowerCase().includes(supervisorSearch.toLowerCase())
+    s.departments.some((d) => d.toLowerCase().includes(supervisorSearch.toLowerCase()))
   );
-
-  const groupedSupervisors = filteredSupervisors.reduce((acc, s) => {
-    if (!acc[s.department]) acc[s.department] = [];
-    acc[s.department].push(s);
-    return acc;
-  }, {});
 
   const handleSelectRoleCategory = (cat) => {
     setSelectedRoleCategory(cat);
@@ -110,6 +115,12 @@ export default function LoginModal({
       setSelectedSupervisor(null);
       setUsername('niranjan');
       setChangeUsername('niranjan');
+      setPassword('');
+      passwordInputRef.current?.focus();
+    } else if (cat === 'rohitha') {
+      setSelectedSupervisor(null);
+      setUsername('rohitha');
+      setChangeUsername('rohitha');
       setPassword('');
       passwordInputRef.current?.focus();
     } else if (cat === 'vinod') {
@@ -271,10 +282,14 @@ export default function LoginModal({
           <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 text-center">
             Select Your Role
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             <button type="button" onClick={() => handleSelectRoleCategory('supervisors')} className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${selectedRoleCategory === 'supervisors' ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold shadow-sm' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'}`}>
               <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span className="block truncate font-semibold">Supervisors</span>
+            </button>
+            <button type="button" onClick={() => handleSelectRoleCategory('rohitha')} className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${selectedRoleCategory === 'rohitha' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-sm' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'}`}>
+              <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="block truncate font-semibold">Mr. Rohitha</span>
             </button>
             <button type="button" onClick={() => handleSelectRoleCategory('niranjan')} className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${selectedRoleCategory === 'niranjan' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-sm' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'}`}>
               <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -295,43 +310,38 @@ export default function LoginModal({
           <div className="mb-4 p-3 bg-amber-50/60 dark:bg-slate-800/80 rounded-2xl border border-amber-300 dark:border-amber-500/40 animate-in fade-in duration-150">
             <div className="flex items-center justify-between mb-2 pb-1 border-b border-amber-200 dark:border-slate-700">
               <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5" /> Select Your Name & Department
+                <Users className="w-3.5 h-3.5" /> Select Your Supervisor Account
               </span>
+              <span className="text-[10px] text-slate-500">{filteredSupervisors.length} supervisors</span>
             </div>
             <div className="relative mb-2">
               <input type="text" placeholder="Search supervisor or department..." value={supervisorSearch} onChange={(e) => setSupervisorSearch(e.target.value)} className="w-full text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder-slate-400 pl-7 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none" />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2 pointer-events-none" />
             </div>
-            <div className="max-h-48 overflow-y-auto pr-1 space-y-2.5">
-              {Object.entries(groupedSupervisors).map(([deptName, sups]) => (
-                <div key={deptName}>
-                  <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 px-1 flex items-center gap-1">
-                    <Building2 className="w-3 h-3 text-slate-400" />
-                    {deptName}
-                    <span className="text-slate-400">({sups.length})</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {sups.map((s) => {
-                      const isSelected = selectedSupervisor?.username === s.username && selectedSupervisor?.department === s.department;
-                      return (
-                        <button key={`${s.username}-${s.department}`} type="button" onClick={() => handleSelectSupervisor(s)} className={`p-1.5 px-2 rounded-xl border text-left transition flex items-center justify-between text-xs ${isSelected ? 'border-amber-500 bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-bold' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
-                          <div className="truncate pr-1">
-                            <div className="font-semibold leading-tight">{s.name}</div>
-                          </div>
-                          {isSelected && <CheckCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              {Object.keys(groupedSupervisors).length === 0 && (
+            <div className="max-h-56 overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {filteredSupervisors.map((s) => {
+                  const isSelected = selectedSupervisor?.username === s.username;
+                  return (
+                    <button key={s.username} type="button" onClick={() => handleSelectSupervisor(s)} className={`p-2 rounded-xl border text-left transition flex items-center justify-between text-xs ${isSelected ? 'border-amber-500 bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-bold' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'}`}>
+                      <div className="truncate pr-1">
+                        <div className="font-semibold leading-tight">{s.name}</div>
+                        <div className="text-[10px] text-amber-600 dark:text-amber-400 truncate mt-0.5">
+                          {s.departments.join(', ')}
+                        </div>
+                      </div>
+                      {isSelected && <CheckCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {filteredSupervisors.length === 0 && (
                 <div className="text-center text-xs text-slate-400 py-3">No supervisors found.</div>
               )}
             </div>
             {selectedSupervisor && (
               <div className="mt-2 pt-1.5 border-t border-amber-200 dark:border-slate-700 text-[11px] text-amber-800 dark:text-amber-300 flex items-center justify-between">
-                <span>Selected: <strong>{selectedSupervisor.name}</strong></span>
+                <span>Selected: <strong>{selectedSupervisor.name}</strong> ({selectedSupervisor.departments?.join(', ') || selectedSupervisor.department})</span>
                 <span className="text-[10px] text-slate-500">Default: {selectedSupervisor.defaultPass}</span>
               </div>
             )}

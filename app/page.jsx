@@ -456,7 +456,7 @@ export default function HomePage() {
               <div onClick={() => setSelectedStatusFilter('ISSUED')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'ISSUED' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
                 <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">Issued & Locked</div>
                 <div className="text-xl font-black text-emerald-700 dark:text-emerald-400">
-                  {mrns.filter((m) => m.status === 'ISSUED').length}
+                  {mrns.filter((m) => m.isLocked || m.status === 'ISSUED' || m.status === 'PARTIALLY_ISSUED').length}
                 </div>
               </div>
             </div>

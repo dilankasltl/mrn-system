@@ -38,12 +38,12 @@ export default function Navbar({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Filter MRN suggestions based on input (min 2 chars)
-  const suggestions = searchInput.trim().length >= 2
+  // Filter MRN suggestions based on input (min 1 char)
+  const suggestions = searchInput.trim().length >= 1
     ? (mrns || []).filter((m) =>
         m.mrnNo?.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
         m.department?.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
-        m.requesterName?.toLowerCase().includes(searchInput.trim().toLowerCase())
+        m.requestedBy?.toLowerCase().includes(searchInput.trim().toLowerCase())
       ).slice(0, 8)
     : [];
 
@@ -94,7 +94,17 @@ export default function Navbar({
       );
     }
 
-    if (currentUser.role === 'management_niranjan' || currentUser.role === 'management_rohitha') {
+    if (currentUser.role === 'management_rohitha') {
+      return mrns.filter(
+        (m) =>
+          // Pending HRD supervisor approval
+          (m.department === 'HRD & Admin' && !m.supervisorApproval?.approved && m.status === 'PENDING_SUPERVISOR') ||
+          // OR Pending plant management approval (same as Niranjan)
+          (m.supervisorApproval?.approved && !m.niranjanApproval?.approved && m.status !== 'ISSUED' && m.status !== 'REJECTED')
+      );
+    }
+
+    if (currentUser.role === 'management_niranjan') {
       return mrns.filter(
         (m) =>
           m.supervisorApproval?.approved &&
