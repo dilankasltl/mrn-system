@@ -27,6 +27,10 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    isPasswordChanged: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

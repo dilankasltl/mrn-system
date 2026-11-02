@@ -615,7 +615,7 @@ export default function LandingPortal({
                       Selected: <strong>{selectedSupervisor.name}</strong> ({selectedSupervisor.departments?.join(', ') || selectedSupervisor.department})
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      Default: {selectedSupervisor.defaultPass}
+                      Default (if unchanged): {selectedSupervisor.defaultPass}
                     </span>
                   </div>
                 )}
@@ -626,19 +626,19 @@ export default function LandingPortal({
             {selectedRoleCategory === 'niranjan' && (
               <div className="mb-4 p-2.5 bg-blue-950/40 border border-blue-800/60 rounded-xl text-xs text-blue-300 flex items-center justify-between">
                 <span>Signing in as <strong>Mr. Niranjan</strong></span>
-                <span className="text-[10px] text-slate-400">Default: Niranjan@123</span>
+                <span className="text-[10px] text-slate-400">Default (if unchanged): Niranjan@123</span>
               </div>
             )}
             {selectedRoleCategory === 'vinod' && (
               <div className="mb-4 p-2.5 bg-purple-950/40 border border-purple-800/60 rounded-xl text-xs text-purple-300 flex items-center justify-between">
                 <span>Signing in as <strong>Mr. Vinod</strong></span>
-                <span className="text-[10px] text-slate-400">Default: Vinod@123</span>
+                <span className="text-[10px] text-slate-400">Default (if unchanged): Vinod@123</span>
               </div>
             )}
             {selectedRoleCategory === 'stores' && (
               <div className="mb-4 p-2.5 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-xs text-emerald-300 flex items-center justify-between">
                 <span>Signing in as <strong>Stores Department</strong></span>
-                <span className="text-[10px] text-slate-400">Default: Stores@123</span>
+                <span className="text-[10px] text-slate-400">Default (if unchanged): Stores@123</span>
               </div>
             )}
 

@@ -358,7 +358,7 @@ export default function LoginModal({
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Password</label>
-              <span className="text-[10px] text-slate-400">Default: Name@123</span>
+              <span className="text-[10px] text-slate-400">Default (if unchanged): Name@123</span>
             </div>
             <div className="relative">
               <input ref={passwordInputRef} type={showPassword ? 'text' : 'password'} required placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full text-xs px-3.5 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500" />
