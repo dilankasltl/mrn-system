@@ -6,20 +6,24 @@ import { INITIAL_DEPARTMENTS } from '@/lib/seedData';
 export async function GET() {
   try {
     await connectToDatabase();
+    const validNames = INITIAL_DEPARTMENTS.map((d) => d.name);
     const count = await Department.countDocuments();
     if (count === 0) {
       await Department.insertMany(INITIAL_DEPARTMENTS);
       return NextResponse.json({ success: true, message: `Database initialized and seeded with ${INITIAL_DEPARTMENTS.length} departments and supervisors.`, seeded: true, count: INITIAL_DEPARTMENTS.length });
     }
-    // Always sync supervisors from seed data so they stay up to date
+    // Sync supervisors & upsert valid departments
     for (const dept of INITIAL_DEPARTMENTS) {
       await Department.findOneAndUpdate(
         { name: dept.name },
-        { $set: { supervisors: dept.supervisors } },
-        { upsert: false }
+        { $set: dept },
+        { upsert: true, new: true }
       );
     }
-    return NextResponse.json({ success: true, message: `Database connected. ${count} departments available. Supervisors synced.`, seeded: false, count });
+    // Remove departments no longer in the list
+    await Department.deleteMany({ name: { $nin: validNames } });
+    const newCount = await Department.countDocuments();
+    return NextResponse.json({ success: true, message: `Database synced. ${newCount} departments available.`, seeded: false, count: newCount });
   } catch (error) {
     console.error('Database connection error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Failed to connect to database' }, { status: 500 });
