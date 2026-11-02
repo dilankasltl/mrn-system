@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Navbar from '@/components/Navbar';
 import LandingPortal from '@/components/LandingPortal';
 import NewMRNModal from '@/components/NewMRNModal';
@@ -23,18 +23,48 @@ import {
   FileText,
   ArrowLeft,
   Bell,
+  FileSpreadsheet,
+  Calendar,
+  UserCheck,
 } from 'lucide-react';
+import { exportMRNsToExcel } from '@/lib/exportExcel';
 
 export default function HomePage() {
   const [theme, setTheme] = useState('light');
-  const [viewMode, setViewMode] = useState('portal');
 
-  const [currentUser, setCurrentUser] = useState({
-    id: 'guest',
-    name: 'Department Requester',
-    role: 'department',
-    department: 'Engineering',
-    isAuthenticated: false,
+  // Synchronous session restore - zero hydration race condition
+  const [currentUser, setCurrentUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('sundaram_mrn_user');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.name && parsed.isAuthenticated) {
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+    return {
+      id: 'guest',
+      name: 'Department Requester',
+      role: 'department',
+      department: 'Engineering',
+      isAuthenticated: false,
+    };
+  });
+
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('sundaram_mrn_user');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.isAuthenticated) return 'dashboard';
+        }
+      } catch (e) {}
+    }
+    return 'portal';
   });
 
   const [departments, setDepartments] = useState([]);
@@ -52,6 +82,12 @@ export default function HomePage() {
   const [selectedDeptFilter, setSelectedDeptFilter] = useState('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Date and Approval History Filters
+  const [dateFilter, setDateFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'THIS_MONTH' | 'CUSTOM'
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [approvalHistoryFilter, setApprovalHistoryFilter] = useState('ALL'); // 'ALL' | 'MY_APPROVALS' | 'PENDING_ME'
 
   // Manage Theme
   useEffect(() => {
@@ -74,22 +110,6 @@ export default function HomePage() {
       document.documentElement.classList.remove('dark');
     }
   };
-
-  // Restore saved session
-  useEffect(() => {
-    try {
-      const savedUserStr = localStorage.getItem('sundaram_mrn_user');
-      if (savedUserStr) {
-        const parsed = JSON.parse(savedUserStr);
-        if (parsed && parsed.name && parsed.isAuthenticated) {
-          setCurrentUser(parsed);
-          setViewMode('dashboard');
-        }
-      }
-    } catch (e) {
-      console.error('Session load error', e);
-    }
-  }, []);
 
   // Fetch Departments
   const fetchDepartments = useCallback(async () => {
@@ -126,6 +146,32 @@ export default function HomePage() {
         params.append('search', searchQuery.trim());
       }
 
+      // Date filtering params
+      const now = new Date();
+      if (dateFilter === 'TODAY') {
+        const todayStr = now.toISOString().slice(0, 10);
+        params.append('startDate', todayStr);
+        params.append('endDate', todayStr);
+      } else if (dateFilter === 'THIS_MONTH') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+        params.append('startDate', firstDay);
+        params.append('endDate', lastDay);
+      } else if (dateFilter === 'CUSTOM') {
+        if (customStartDate) params.append('startDate', customStartDate);
+        if (customEndDate) params.append('endDate', customEndDate);
+      }
+
+      // Approval history filter
+      if (approvalHistoryFilter === 'MY_APPROVALS') {
+        params.append('approvalFilter', 'my_approvals');
+        if (activeUser.role === 'supervisor') {
+          params.append('approvedBy', activeUser.name);
+        }
+      } else if (approvalHistoryFilter === 'PENDING_ME') {
+        params.append('status', 'PENDING_MY_APPROVAL');
+      }
+
       params.append('role', activeUser.role);
       if (activeUser.department) {
         params.append('userDept', activeUser.department);
@@ -141,7 +187,16 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDeptFilter, selectedStatusFilter, searchQuery, currentUser]);
+  }, [
+    selectedDeptFilter,
+    selectedStatusFilter,
+    searchQuery,
+    currentUser,
+    dateFilter,
+    customStartDate,
+    customEndDate,
+    approvalHistoryFilter,
+  ]);
 
   // Fetch Stats
   const fetchStats = useCallback(async () => {
@@ -156,43 +211,33 @@ export default function HomePage() {
     }
   }, []);
 
-  // Initialize Data & Auto-refetch when user, filters, or search change
+  // Initialize Data
   useEffect(() => {
-    let savedUser = null;
-    try {
-      const savedUserStr = localStorage.getItem('sundaram_mrn_user');
-      if (savedUserStr) {
-        const parsed = JSON.parse(savedUserStr);
-        if (parsed && parsed.name && parsed.isAuthenticated) {
-          savedUser = parsed;
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
+    fetchDepartments();
+    fetchStats();
+    fetchMRNs();
 
-    const initApp = async () => {
-      fetchDepartments();
-      fetchStats();
-
-      // Trigger init in background safely
-      fetch('/api/init').catch((e) => console.error('Init error', e));
-
-      // Fetch MRNs with actual user (either saved session or state)
-      await fetchMRNs(savedUser || currentUser);
-
-      // Fetch all MRNs for track search suggestions
-      try {
-        const res = await fetch('/api/mrn?limit=500');
-        const data = await res.json();
+    // Fetch all MRNs for track search suggestions
+    fetch('/api/mrn?limit=500')
+      .then((res) => res.json())
+      .then((data) => {
         if (data.success) setAllMrns(data.mrns || []);
-      } catch (e) {
-        console.error('All MRNs fetch error', e);
-      }
-    };
+      })
+      .catch((e) => console.error('All MRNs fetch error', e));
 
-    initApp();
-  }, [selectedDeptFilter, selectedStatusFilter, searchQuery, currentUser.role, currentUser.department]);
+    // Background init
+    fetch('/api/init').catch((e) => console.error('Init error', e));
+  }, [
+    selectedDeptFilter,
+    selectedStatusFilter,
+    searchQuery,
+    dateFilter,
+    customStartDate,
+    customEndDate,
+    approvalHistoryFilter,
+    currentUser.role,
+    currentUser.department,
+  ]);
 
   // Handle Search for single MRN
   const handleSearchMRN = async (mrnNo) => {
@@ -240,7 +285,7 @@ export default function HomePage() {
       setSelectedDeptFilter('ALL');
     }
     setViewMode('dashboard');
-    fetchMRNs();
+    fetchMRNs(loggedUser);
     fetchStats();
   };
 
@@ -255,7 +300,22 @@ export default function HomePage() {
       isAuthenticated: false,
     });
     setSelectedDeptFilter('ALL');
+    setApprovalHistoryFilter('ALL');
+    setDateFilter('ALL');
     setViewMode('portal');
+  };
+
+  // Export current list to Excel
+  const handleExportCurrentMRNs = () => {
+    let dateLabel = dateFilter;
+    if (dateFilter === 'CUSTOM' && customStartDate) {
+      dateLabel = `${customStartDate}_to_${customEndDate || 'now'}`;
+    }
+    exportMRNsToExcel(mrns, {
+      title: 'Sundaram_MRN_History',
+      department: selectedDeptFilter,
+      dateRangeLabel: dateLabel,
+    });
   };
 
   // Helper: Status Badge
@@ -299,7 +359,7 @@ export default function HomePage() {
     );
   };
 
-  // If in portal view mode, show the beautiful entrance portal
+  // If in portal view mode, show entrance portal
   if (viewMode === 'portal') {
     return (
       <LandingPortal
@@ -339,130 +399,292 @@ export default function HomePage() {
         {activeTab === 'mrns' && (
           <div className="space-y-5">
             {/* Action Bar & Filters */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors">
-              {/* Search Box */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search by MRN #, Description, Requester..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-xs pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-sky-500 transition"
-                />
-              </div>
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-3 transition-colors">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                {/* Search Box */}
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search by MRN #, Description, Requester..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full text-xs pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-sky-500 transition"
+                  />
+                </div>
 
-              {/* Department & Status Filters */}
-              <div className="flex flex-wrap items-center gap-2">
-                {['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser.role) ? (
+                {/* Right Controls: Department, Status, Export, Refresh */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Department Selector */}
+                  {['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser.role) ? (
+                    <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs">
+                      <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                      <select
+                        value={selectedDeptFilter}
+                        onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                        className="bg-transparent text-slate-700 dark:text-slate-200 font-medium focus:outline-none text-xs"
+                      >
+                        <option value="ALL">All Departments</option>
+                        {departments.map((d) => (
+                          <option key={d.name} value={d.name} className="dark:bg-slate-800">
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      <div
+                        className="flex items-center gap-2 bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-800/80 px-3.5 py-2 rounded-xl text-xs font-bold text-sky-700 dark:text-sky-300 shadow-sm"
+                        title={`Locked to ${currentUser.department || 'Department'}.`}
+                      >
+                        <Building2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                        <span>{currentUser.department || 'Department'}</span>
+                        <span className="text-[10px] bg-sky-200 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300 px-1.5 py-0.5 rounded font-mono font-semibold">
+                          Department
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status Dropdown */}
                   <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs">
-                    <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    <Filter className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <select
-                      value={selectedDeptFilter}
-                      onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                      value={selectedStatusFilter}
+                      onChange={(e) => setSelectedStatusFilter(e.target.value)}
                       className="bg-transparent text-slate-700 dark:text-slate-200 font-medium focus:outline-none text-xs"
                     >
-                      <option value="ALL">All Departments</option>
-                      {departments.map((d) => (
-                        <option key={d.name} value={d.name} className="dark:bg-slate-800">
-                          {d.name}
-                        </option>
-                      ))}
+                      <option value="ALL">All Statuses</option>
+                      <option value="PENDING_SUPERVISOR">Pending Supervisor</option>
+                      <option value="PENDING_MANAGEMENT">Pending Management</option>
+                      <option value="APPROVED">Approved (Stores Ready)</option>
+                      <option value="ISSUED">Issued & Locked</option>
                     </select>
                   </div>
-                ) : (
-                  <div className="flex flex-col gap-1.5">
-                    <div
-                      className="flex items-center gap-2 bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-800/80 px-3.5 py-2 rounded-xl text-xs font-bold text-sky-700 dark:text-sky-300 shadow-sm"
-                      title={`Locked to ${currentUser.department || 'Department'}. Requisitions and data are isolated to this department only.`}
+
+                  {/* Date Filter Dropdown */}
+                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs">
+                    <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    <select
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      className="bg-transparent text-slate-700 dark:text-slate-200 font-medium focus:outline-none text-xs"
                     >
-                      <Building2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                      <span>{currentUser.department || 'Department'}</span>
-                      <span className="text-[10px] bg-sky-200 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300 px-1.5 py-0.5 rounded font-mono font-semibold">
-                        Department
-                      </span>
-                    </div>
-                    {(() => {
-                      const dept = departments.find((d) => d.name === currentUser.department);
-                      const sups = dept?.supervisors || [];
-                      if (sups.length === 0) return null;
-                      return (
-                        <div className="flex flex-wrap items-center gap-1.5 px-1">
-                          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Supervisors:</span>
-                          {sups.map((s, i) => (
-                            <span key={i} className="text-[10px] bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-lg font-semibold border border-amber-200 dark:border-amber-800/60">
-                              {s.name}
-                            </span>
-                          ))}
-                        </div>
-                      );
-                    })()}
+                      <option value="ALL">All Dates</option>
+                      <option value="TODAY">Today</option>
+                      <option value="THIS_MONTH">This Month</option>
+                      <option value="CUSTOM">Custom Range</option>
+                    </select>
+                  </div>
+
+                  {/* Excel Export Button */}
+                  <button
+                    onClick={handleExportCurrentMRNs}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95"
+                    title="Download filtered MRNs as Excel (.xlsx)"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Excel</span>
+                  </button>
+
+                  {/* Refresh Button */}
+                  <button
+                    onClick={() => { fetchMRNs(); fetchStats(); }}
+                    className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 transition"
+                    title="Refresh MRN List"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Secondary Filter Row: Custom Dates & Approver History Tabs */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                {/* Supervisor & Management History Toggle Pills */}
+                {currentUser.role === 'supervisor' && (
+                  <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 p-1 rounded-xl border border-amber-200 dark:border-amber-900/50">
+                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 px-1.5">View:</span>
+                    <button
+                      type="button"
+                      onClick={() => setApprovalHistoryFilter('ALL')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        approvalHistoryFilter === 'ALL'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'text-amber-800 dark:text-amber-300 hover:bg-amber-200/50'
+                      }`}
+                    >
+                      All {currentUser.department || ''} MRNs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setApprovalHistoryFilter('MY_APPROVALS')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                        approvalHistoryFilter === 'MY_APPROVALS'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'text-amber-800 dark:text-amber-300 hover:bg-amber-200/50'
+                      }`}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      Approved By Me
+                    </button>
                   </div>
                 )}
 
-                {/* Status Dropdown */}
-                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs">
-                  <Filter className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                  <select
-                    value={selectedStatusFilter}
-                    onChange={(e) => setSelectedStatusFilter(e.target.value)}
-                    className="bg-transparent text-slate-700 dark:text-slate-200 font-medium focus:outline-none text-xs"
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="PENDING_SUPERVISOR">Pending Supervisor</option>
-                    <option value="PENDING_MANAGEMENT">Pending Management</option>
-                    <option value="APPROVED">Approved (Stores Ready)</option>
-                    <option value="ISSUED">Issued & Locked</option>
-                  </select>
-                </div>
+                {(currentUser.role === 'management_niranjan' || currentUser.role === 'management_vinod') && (
+                  <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/30 p-1 rounded-xl border border-blue-200 dark:border-blue-900/50">
+                    <span className="text-[10px] font-bold text-blue-700 dark:text-blue-400 px-1.5">View:</span>
+                    <button
+                      type="button"
+                      onClick={() => setApprovalHistoryFilter('ALL')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        approvalHistoryFilter === 'ALL'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-blue-800 dark:text-blue-300 hover:bg-blue-200/50'
+                      }`}
+                    >
+                      All Plant MRNs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setApprovalHistoryFilter('PENDING_ME')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                        approvalHistoryFilter === 'PENDING_ME'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-blue-800 dark:text-blue-300 hover:bg-blue-200/50'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      Pending My Review
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setApprovalHistoryFilter('MY_APPROVALS')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                        approvalHistoryFilter === 'MY_APPROVALS'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-blue-800 dark:text-blue-300 hover:bg-blue-200/50'
+                      }`}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      Approved By Me
+                    </button>
+                  </div>
+                )}
 
-                {/* Refresh Button */}
-                <button
-                  onClick={() => { fetchMRNs(); fetchStats(); }}
-                  className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 transition"
-                  title="Refresh MRN List"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                </button>
+                {currentUser.role === 'stores' && (
+                  <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/30 p-1 rounded-xl border border-emerald-200 dark:border-emerald-900/50">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 px-1.5">View:</span>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedStatusFilter('ALL'); setApprovalHistoryFilter('ALL'); }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        selectedStatusFilter === 'ALL' && approvalHistoryFilter === 'ALL'
+                          ? 'bg-emerald-600 text-white'
+                          : 'text-emerald-800 dark:text-emerald-300'
+                      }`}
+                    >
+                      All MRNs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedStatusFilter('APPROVED'); setApprovalHistoryFilter('ALL'); }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        selectedStatusFilter === 'APPROVED'
+                          ? 'bg-emerald-600 text-white'
+                          : 'text-emerald-800 dark:text-emerald-300'
+                      }`}
+                    >
+                      Ready to Issue
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedStatusFilter('ISSUED'); setApprovalHistoryFilter('my_approvals'); }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        selectedStatusFilter === 'ISSUED'
+                          ? 'bg-emerald-600 text-white'
+                          : 'text-emerald-800 dark:text-emerald-300'
+                      }`}
+                    >
+                      Issued & Locked
+                    </button>
+                  </div>
+                )}
+
+                {/* Custom Date Pickers */}
+                {dateFilter === 'CUSTOM' && (
+                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-slate-500 text-[11px]">From:</span>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
+                    />
+                    <span className="text-slate-500 text-[11px]">To:</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Quick Summary Pill Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div onClick={() => setSelectedStatusFilter('ALL')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'ALL' ? 'bg-sky-50/80 dark:bg-sky-950/40 border-sky-300 dark:border-sky-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
+              <div
+                onClick={() => setSelectedStatusFilter('ALL')}
+                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
+                  selectedStatusFilter === 'ALL'
+                    ? 'bg-sky-50/80 dark:bg-sky-950/40 border-sky-300 dark:border-sky-800 shadow-sm'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
                 <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Total Listed</div>
                 <div className="text-xl font-black text-slate-900 dark:text-white">{mrns.length}</div>
               </div>
 
-              <div onClick={() => setSelectedStatusFilter('PENDING_SUPERVISOR')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'PENDING_SUPERVISOR' ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
+              <div
+                onClick={() => setSelectedStatusFilter('PENDING_SUPERVISOR')}
+                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
+                  selectedStatusFilter === 'PENDING_SUPERVISOR'
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 shadow-sm'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
                 <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase">Pending Supervisor</div>
                 <div className="text-xl font-black text-amber-700 dark:text-amber-400">
                   {mrns.filter((m) => m.status === 'PENDING_SUPERVISOR').length}
                 </div>
-                {(() => {
-                  const dept = departments.find((d) => d.name === currentUser.department);
-                  const sups = dept?.supervisors || [];
-                  if (sups.length === 0) return null;
-                  return (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {sups.map((s, i) => (
-                        <span key={i} className="text-[9px] bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-semibold">
-                          {s.name}
-                        </span>
-                      ))}
-                    </div>
-                  );
-                })()}
               </div>
 
-              <div onClick={() => setSelectedStatusFilter('PENDING_MANAGEMENT')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'PENDING_MANAGEMENT' ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
-                <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">Pending Mr. Niranjan / Mr. Vinod</div>
+              <div
+                onClick={() => setSelectedStatusFilter('PENDING_MANAGEMENT')}
+                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
+                  selectedStatusFilter === 'PENDING_MANAGEMENT'
+                    ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-sm'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">
+                  Pending Mr. Niranjan / Mr. Vinod
+                </div>
                 <div className="text-xl font-black text-purple-700 dark:text-purple-400">
                   {mrns.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length}
                 </div>
               </div>
 
-              <div onClick={() => setSelectedStatusFilter('ISSUED')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'ISSUED' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
+              <div
+                onClick={() => setSelectedStatusFilter('ISSUED')}
+                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
+                  selectedStatusFilter === 'ISSUED'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 shadow-sm'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
                 <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">Issued & Locked</div>
                 <div className="text-xl font-black text-emerald-700 dark:text-emerald-400">
                   {mrns.filter((m) => m.isLocked || m.status === 'ISSUED' || m.status === 'PARTIALLY_ISSUED').length}
@@ -522,13 +744,40 @@ export default function HomePage() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5">
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.supervisorApproval?.approved ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.supervisorApproval?.approved ? `Supervisor: ${m.supervisorApproval.approvedBy}` : 'Supervisor: Pending'}>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                  m.supervisorApproval?.approved
+                                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                }`}
+                                title={m.supervisorApproval?.approved ? `Supervisor: ${m.supervisorApproval.approvedBy}` : 'Supervisor: Pending'}
+                              >
                                 Sup {m.supervisorApproval?.approved ? '✓' : '...'}
                               </span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.niranjanApproval?.approved ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.niranjanApproval?.approved ? `Approved by ${m.niranjanApproval.approvedBy}` : 'Mr. Niranjan: Pending'}>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                  m.niranjanApproval?.approved
+                                    ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                }`}
+                                title={m.niranjanApproval?.approved ? `Approved by ${m.niranjanApproval.approvedBy}` : 'Mr. Niranjan: Pending'}
+                              >
                                 {m.niranjanApproval?.approved ? 'Mr. Niranjan ✓' : 'Mr. Niranjan ...'}
                               </span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.vinodApproval?.approved ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.vinodApproval?.approved ? (m.vinodApproval.withoutNiranjan ? 'Approved by Mr. Vinod (Without Mr. Niranjan Approval)' : 'Approved by Mr. Vinod') : 'Mr. Vinod: Pending'}>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                  m.vinodApproval?.approved
+                                    ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                }`}
+                                title={
+                                  m.vinodApproval?.approved
+                                    ? m.vinodApproval.withoutNiranjan
+                                      ? 'Approved by Mr. Vinod (Direct)'
+                                      : 'Approved by Mr. Vinod'
+                                    : 'Mr. Vinod: Pending'
+                                }
+                              >
                                 Mr. Vinod {m.vinodApproval?.approved ? '✓' : '...'}
                               </span>
                             </div>
@@ -552,10 +801,18 @@ export default function HomePage() {
         {/* Tab 2: Analytics & Reports */}
         {activeTab === 'analytics' && (
           <AnalyticsDashboard
-            mrns={mrns}
+            mrns={allMrns.length > 0 ? allMrns : mrns}
             stats={stats}
             loading={loading}
-            onRefresh={() => { fetchMRNs(); fetchStats(); }}
+            onRefresh={() => {
+              fetchMRNs();
+              fetchStats();
+              fetch('/api/mrn?limit=500')
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d.success) setAllMrns(d.mrns || []);
+                });
+            }}
           />
         )}
 
@@ -579,6 +836,7 @@ export default function HomePage() {
         departments={departments}
         onMRNCreated={(newMrn) => {
           setMrns([newMrn, ...mrns]);
+          setAllMrns([newMrn, ...allMrns]);
           fetchStats();
         }}
       />
@@ -602,10 +860,12 @@ export default function HomePage() {
         onMRNUpdated={(updatedMRN) => {
           setSelectedMRN(updatedMRN);
           setMrns(mrns.map((m) => (m._id === updatedMRN._id ? updatedMRN : m)));
+          setAllMrns(allMrns.map((m) => (m._id === updatedMRN._id ? updatedMRN : m)));
           fetchStats();
         }}
         onMRNDeleted={(delId) => {
           setMrns(mrns.filter((m) => m._id !== delId));
+          setAllMrns(allMrns.filter((m) => m._id !== delId));
           fetchStats();
         }}
         onOpenLogin={() => setIsLoginModalOpen(true)}

@@ -12,7 +12,6 @@ export default function NewMRNModal({
 }) {
   const [department, setDepartment] = useState(currentUser.department || 'Engineering');
   const [requestedBy, setRequestedBy] = useState(currentUser.name || '');
-  const [shift, setShift] = useState('General');
   const [generalRemarks, setGeneralRemarks] = useState('');
 
   React.useEffect(() => {
@@ -93,7 +92,6 @@ export default function NewMRNModal({
         body: JSON.stringify({
           department,
           requestedBy: requestedBy.trim() || 'Department User',
-          shift,
           generalRemarks,
           items: validItems.map((it, idx) => ({
             itemNo: idx + 1,
@@ -162,7 +160,7 @@ export default function NewMRNModal({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-5">
           {/* Top Metadata Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Department <span className="text-red-500">*</span>
@@ -185,20 +183,6 @@ export default function NewMRNModal({
                 className="w-full text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none"
                 required
               />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Shift / Line</label>
-              <select
-                value={shift}
-                onChange={(e) => setShift(e.target.value)}
-                className="w-full text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-              >
-                <option value="General">General / Day</option>
-                <option value="Shift A">Shift A</option>
-                <option value="Shift B">Shift B</option>
-                <option value="Shift C">Shift C</option>
-              </select>
             </div>
           </div>
 

@@ -63,6 +63,7 @@ const MRNSchema = new mongoose.Schema(
     date: {
       type: Date,
       default: Date.now,
+      index: true,
     },
     generalRemarks: {
       type: String,
@@ -113,6 +114,13 @@ const MRNSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+MRNSchema.index({ createdAt: -1 });
+MRNSchema.index({ department: 1, createdAt: -1 });
+MRNSchema.index({ status: 1, createdAt: -1 });
+MRNSchema.index({ 'supervisorApproval.approved': 1, 'supervisorApproval.approvedBy': 1 });
+MRNSchema.index({ 'niranjanApproval.approved': 1, 'niranjanApproval.approvedBy': 1 });
+MRNSchema.index({ 'vinodApproval.approved': 1, 'vinodApproval.approvedBy': 1 });
 
 const MRN = mongoose.models.MRN || mongoose.model('MRN', MRNSchema);
 
