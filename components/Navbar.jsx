@@ -36,12 +36,29 @@ export default function Navbar({
 }) {
   const [searchInput, setSearchInput] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Filter MRN suggestions based on input (min 2 chars)
+  const suggestions = searchInput.trim().length >= 2
+    ? (mrns || []).filter((m) =>
+        m.mrnNo?.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
+        m.department?.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
+        m.requesterName?.toLowerCase().includes(searchInput.trim().toLowerCase())
+      ).slice(0, 8)
+    : [];
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchInput.trim()) {
       onSearchMRN(searchInput.trim());
+      setShowSuggestions(false);
     }
+  };
+
+  const handleSelectSuggestion = (mrn) => {
+    setSearchInput(mrn.mrnNo);
+    setShowSuggestions(false);
+    onSelectMRN(mrn);
   };
 
   // Determine user display label
@@ -49,6 +66,8 @@ export default function Navbar({
     switch (currentUser.role) {
       case 'management_niranjan':
         return 'Mr. Niranjan';
+      case 'management_rohitha':
+        return 'Mr. Rohitha';
       case 'management_vinod':
         return 'Mr. Vinod';
       case 'stores':
@@ -75,7 +94,7 @@ export default function Navbar({
       );
     }
 
-    if (currentUser.role === 'management_niranjan') {
+    if (currentUser.role === 'management_niranjan' || currentUser.role === 'management_rohitha') {
       return mrns.filter(
         (m) =>
           m.supervisorApproval?.approved &&
@@ -143,10 +162,36 @@ export default function Navbar({
                 type="text"
                 placeholder="Track any MRN No (e.g. MRN-202610...)"
                 value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                onChange={(e) => { setSearchInput(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 className="w-full bg-slate-800/80 text-xs text-slate-100 placeholder-slate-400 pl-9 pr-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-sky-500 transition-all"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+              {/* Autocomplete Dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
+                  {suggestions.map((m) => (
+                    <button
+                      key={m._id}
+                      type="button"
+                      onMouseDown={() => handleSelectSuggestion(m)}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-700 transition flex items-center justify-between gap-2 border-b border-slate-700/50 last:border-0"
+                    >
+                      <div>
+                        <span className="text-xs font-bold text-sky-400 font-mono">{m.mrnNo}</span>
+                        <span className="text-[10px] text-slate-400 ml-2">{m.department}</span>
+                      </div>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
+                        m.status === 'ISSUED' ? 'bg-emerald-900/60 text-emerald-300' :
+                        m.status === 'PENDING_SUPERVISOR' ? 'bg-amber-900/60 text-amber-300' :
+                        m.status === 'APPROVED' ? 'bg-blue-900/60 text-blue-300' :
+                        'bg-slate-700 text-slate-300'
+                      }`}>{m.status?.replace(/_/g, ' ')}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <button
               type="submit"
