@@ -3,13 +3,20 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Department from '@/models/Department';
 import { INITIAL_DEPARTMENTS } from '@/lib/seedData';
 
+let hasInitRun = false;
+
 export async function GET() {
   try {
     await connectToDatabase();
+    if (hasInitRun) {
+      return NextResponse.json({ success: true, message: 'Already initialized in this worker.' });
+    }
+
     const validNames = INITIAL_DEPARTMENTS.map((d) => d.name);
     const count = await Department.countDocuments();
     if (count === 0) {
       await Department.insertMany(INITIAL_DEPARTMENTS);
+      hasInitRun = true;
       return NextResponse.json({ success: true, message: `Database initialized and seeded with ${INITIAL_DEPARTMENTS.length} departments and supervisors.`, seeded: true, count: INITIAL_DEPARTMENTS.length });
     }
     // Sync supervisors & upsert valid departments
@@ -23,6 +30,7 @@ export async function GET() {
     // Remove departments no longer in the list
     await Department.deleteMany({ name: { $nin: validNames } });
     const newCount = await Department.countDocuments();
+    hasInitRun = true;
     return NextResponse.json({ success: true, message: `Database synced. ${newCount} departments available.`, seeded: false, count: newCount });
   } catch (error) {
     console.error('Database connection error:', error);

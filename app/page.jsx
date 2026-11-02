@@ -105,13 +105,14 @@ export default function HomePage() {
   }, []);
 
   // Fetch MRNs
-  const fetchMRNs = useCallback(async () => {
+  const fetchMRNs = useCallback(async (userOverride = null) => {
     setLoading(true);
     try {
+      const activeUser = userOverride || currentUser;
       const params = new URLSearchParams();
 
-      const isGlobalManager = ['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser.role);
-      const activeDept = isGlobalManager ? selectedDeptFilter : (currentUser.department || 'Production');
+      const isGlobalManager = ['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(activeUser.role);
+      const activeDept = isGlobalManager ? selectedDeptFilter : (activeUser.department || 'Production');
 
       if (activeDept && activeDept !== 'ALL') {
         params.append('department', activeDept);
@@ -125,9 +126,9 @@ export default function HomePage() {
         params.append('search', searchQuery.trim());
       }
 
-      params.append('role', currentUser.role);
-      if (currentUser.department) {
-        params.append('userDept', currentUser.department);
+      params.append('role', activeUser.role);
+      if (activeUser.department) {
+        params.append('userDept', activeUser.department);
       }
 
       const res = await fetch(`/api/mrn?${params.toString()}`);
@@ -140,7 +141,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDeptFilter, selectedStatusFilter, searchQuery, currentUser.role, currentUser.department]);
+  }, [selectedDeptFilter, selectedStatusFilter, searchQuery, currentUser]);
 
   // Fetch Stats
   const fetchStats = useCallback(async () => {
@@ -155,22 +156,32 @@ export default function HomePage() {
     }
   }, []);
 
-  // Initialize Data
+  // Initialize Data & Auto-refetch when user, filters, or search change
   useEffect(() => {
-    const initApp = async () => {
-      // Fetch departments immediately (don't wait for init)
-      fetchDepartments();
-      // Run init + MRNs + stats in parallel
-      try {
-        await Promise.all([
-          fetch('/api/init').catch((e) => console.error('Init error', e)),
-          fetchMRNs(),
-          fetchStats(),
-        ]);
-      } catch (e) {
-        console.error('Init error', e);
+    let savedUser = null;
+    try {
+      const savedUserStr = localStorage.getItem('sundaram_mrn_user');
+      if (savedUserStr) {
+        const parsed = JSON.parse(savedUserStr);
+        if (parsed && parsed.name && parsed.isAuthenticated) {
+          savedUser = parsed;
+        }
       }
-      // Fetch all MRNs (unrestricted) for track search suggestions
+    } catch (e) {
+      // ignore
+    }
+
+    const initApp = async () => {
+      fetchDepartments();
+      fetchStats();
+
+      // Trigger init in background safely
+      fetch('/api/init').catch((e) => console.error('Init error', e));
+
+      // Fetch MRNs with actual user (either saved session or state)
+      await fetchMRNs(savedUser || currentUser);
+
+      // Fetch all MRNs for track search suggestions
       try {
         const res = await fetch('/api/mrn?limit=500');
         const data = await res.json();
@@ -181,7 +192,7 @@ export default function HomePage() {
     };
 
     initApp();
-  }, [fetchDepartments, fetchMRNs, fetchStats]);
+  }, [selectedDeptFilter, selectedStatusFilter, searchQuery, currentUser.role, currentUser.department]);
 
   // Handle Search for single MRN
   const handleSearchMRN = async (mrnNo) => {
