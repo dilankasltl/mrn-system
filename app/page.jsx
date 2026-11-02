@@ -39,6 +39,7 @@ export default function HomePage() {
 
   const [departments, setDepartments] = useState([]);
   const [mrns, setMrns] = useState([]);
+  const [allMrns, setAllMrns] = useState([]); // unrestricted list for track search suggestions
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
 
@@ -168,6 +169,14 @@ export default function HomePage() {
         ]);
       } catch (e) {
         console.error('Init error', e);
+      }
+      // Fetch all MRNs (unrestricted) for track search suggestions
+      try {
+        const res = await fetch('/api/mrn?limit=500');
+        const data = await res.json();
+        if (data.success) setAllMrns(data.mrns || []);
+      } catch (e) {
+        console.error('All MRNs fetch error', e);
       }
     };
 
@@ -311,7 +320,7 @@ export default function HomePage() {
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onLogout={handleLogout}
         onExitToPortal={() => setViewMode('portal')}
-        mrns={mrns}
+        mrns={allMrns}
         onSelectMRN={(m) => setSelectedMRN(m)}
       />
 
