@@ -52,11 +52,22 @@ export default function LandingPortal({
   onSearchMRN,
   theme,
   onToggleTheme,
+  allMrns = [],
 }) {
   // Portal navigation tab: Only Department Access OR Office Sign In
   const [activePortalTab, setActivePortalTab] = useState('departments');
   const [deptSearch, setDeptSearch] = useState('');
   const [trackInput, setTrackInput] = useState('');
+  const [showTrackSuggestions, setShowTrackSuggestions] = useState(false);
+
+  // Track search suggestions from allMrns
+  const trackSuggestions = trackInput.trim().length >= 1
+    ? allMrns.filter((m) =>
+        m.mrnNo?.toLowerCase().includes(trackInput.trim().toLowerCase()) ||
+        m.department?.toLowerCase().includes(trackInput.trim().toLowerCase()) ||
+        m.requestedBy?.toLowerCase().includes(trackInput.trim().toLowerCase())
+      ).slice(0, 8)
+    : [];
 
   // Selected Office Sign In category
   const [selectedRoleCategory, setSelectedRoleCategory] = useState(null);
@@ -125,6 +136,7 @@ export default function LandingPortal({
   const handleTrackSubmit = (e) => {
     e.preventDefault();
     if (trackInput.trim()) {
+      setShowTrackSuggestions(false);
       onSearchMRN(trackInput.trim());
     }
   };
@@ -306,10 +318,36 @@ export default function LandingPortal({
                 type="text"
                 placeholder="Track any MRN #..."
                 value={trackInput}
-                onChange={(e) => setTrackInput(e.target.value)}
+                onChange={(e) => { setTrackInput(e.target.value); setShowTrackSuggestions(true); }}
+                onFocus={() => setShowTrackSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowTrackSuggestions(false), 150)}
                 className="w-48 lg:w-64 text-xs bg-slate-800/80 text-slate-200 placeholder-slate-400 pl-8 pr-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-sky-500"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
+              {/* Autocomplete Dropdown */}
+              {showTrackSuggestions && trackSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
+                  {trackSuggestions.map((m) => (
+                    <button
+                      key={m._id}
+                      type="button"
+                      onMouseDown={() => { setTrackInput(m.mrnNo); setShowTrackSuggestions(false); onSearchMRN(m.mrnNo); }}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-700 transition flex items-center justify-between gap-2 border-b border-slate-700/50 last:border-0"
+                    >
+                      <div>
+                        <span className="text-xs font-bold text-sky-400 font-mono">{m.mrnNo}</span>
+                        <span className="text-[10px] text-slate-400 ml-2">{m.department}</span>
+                      </div>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
+                        m.status === 'ISSUED' ? 'bg-emerald-900/60 text-emerald-300' :
+                        m.status === 'PENDING_SUPERVISOR' ? 'bg-amber-900/60 text-amber-300' :
+                        m.status === 'APPROVED' ? 'bg-blue-900/60 text-blue-300' :
+                        'bg-slate-700 text-slate-300'
+                      }`}>{m.status?.replace(/_/g, ' ')}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <button
               type="submit"

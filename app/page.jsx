@@ -300,6 +300,7 @@ export default function HomePage() {
         onSearchMRN={handleSearchMRN}
         theme={theme}
         onToggleTheme={toggleTheme}
+        allMrns={allMrns}
       />
     );
   }
