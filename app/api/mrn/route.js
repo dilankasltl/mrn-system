@@ -71,7 +71,7 @@ export async function POST(req) {
   try {
     await connectToDatabase();
     const body = await req.json();
-    const { department, requestedBy, shift, date, generalRemarks, items } = body;
+    const { department, requestedBy, date, generalRemarks, items } = body;
     if (!department || !department.trim()) return NextResponse.json({ success: false, error: 'Department is required' }, { status: 400 });
     if (!requestedBy || !requestedBy.trim()) return NextResponse.json({ success: false, error: 'Requester name is required' }, { status: 400 });
     if (!Array.isArray(items) || items.length === 0) return NextResponse.json({ success: false, error: 'At least one item is required in MRN' }, { status: 400 });
@@ -87,7 +87,7 @@ export async function POST(req) {
     if (sanitizedItems.length === 0) return NextResponse.json({ success: false, error: 'Please enter a description for at least one item' }, { status: 400 });
     const mrnNo = await generateUniqueMRNNo(department.trim());
     const newMRN = await MRN.create({
-      mrnNo, department: department.trim(), requestedBy: requestedBy.trim(), shift: shift || 'General',
+      mrnNo, department: department.trim(), requestedBy: requestedBy.trim(),
       date: date ? new Date(date) : new Date(), generalRemarks: generalRemarks ? generalRemarks.trim() : '',
       items: sanitizedItems, status: 'PENDING_SUPERVISOR',
       supervisorApproval: { approved: false }, niranjanApproval: { approved: false },

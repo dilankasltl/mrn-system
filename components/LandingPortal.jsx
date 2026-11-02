@@ -165,12 +165,6 @@ export default function LandingPortal({
       setChangeUsername('niranjan');
       setPassword('');
       passwordInputRef.current?.focus();
-    } else if (category === 'rohitha') {
-      setSelectedSupervisor(null);
-      setUsername('rohitha');
-      setChangeUsername('rohitha');
-      setPassword('');
-      passwordInputRef.current?.focus();
     } else if (category === 'vinod') {
       setSelectedSupervisor(null);
       setUsername('vinod');
@@ -394,7 +388,7 @@ export default function LandingPortal({
             Sundaram Lanka Tyres LTD. - MRN System
           </h2>
           <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto mt-1.5">
-            Departments can raise material notes without a password. Authorized Supervisors, Mr. Niranjan, Mr. Rohitha, Mr. Vinod, and Stores sign in below.
+            Departments can raise material notes without a password. Authorized Supervisors, Mr. Niranjan, Mr. Vinod, and Stores sign in below.
           </p>
         </div>
 
@@ -505,7 +499,7 @@ export default function LandingPortal({
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">
                 Select Sign In Role
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <button
                   type="button"
                   onClick={() => handleSelectRoleCategory('supervisors')}
@@ -517,19 +511,6 @@ export default function LandingPortal({
                 >
                   <Users className="w-5 h-5 text-amber-400" />
                   <span className="block truncate font-semibold">Supervisors</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectRoleCategory('rohitha')}
-                  className={`p-3 rounded-2xl border text-xs text-center transition flex flex-col items-center justify-center gap-1.5 ${
-                    selectedRoleCategory === 'rohitha'
-                      ? 'border-blue-500 bg-blue-950/60 text-blue-300 font-bold shadow-md shadow-blue-500/20'
-                      : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600'
-                  }`}
-                >
-                  <UserCheck className="w-5 h-5 text-blue-400" />
-                  <span className="block truncate font-semibold">Mr. Rohitha</span>
                 </button>
 
                 <button
@@ -646,12 +627,6 @@ export default function LandingPortal({
               <div className="mb-4 p-2.5 bg-blue-950/40 border border-blue-800/60 rounded-xl text-xs text-blue-300 flex items-center justify-between">
                 <span>Signing in as <strong>Mr. Niranjan</strong></span>
                 <span className="text-[10px] text-slate-400">Default: Niranjan@123</span>
-              </div>
-            )}
-            {selectedRoleCategory === 'rohitha' && (
-              <div className="mb-4 p-2.5 bg-blue-950/40 border border-blue-800/60 rounded-xl text-xs text-blue-300 flex items-center justify-between">
-                <span>Signing in as <strong>Mr. Rohitha</strong></span>
-                <span className="text-[10px] text-slate-400">Default: Rohitha@123</span>
               </div>
             )}
             {selectedRoleCategory === 'vinod' && (

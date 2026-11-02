@@ -117,12 +117,6 @@ export default function LoginModal({
       setChangeUsername('niranjan');
       setPassword('');
       passwordInputRef.current?.focus();
-    } else if (cat === 'rohitha') {
-      setSelectedSupervisor(null);
-      setUsername('rohitha');
-      setChangeUsername('rohitha');
-      setPassword('');
-      passwordInputRef.current?.focus();
     } else if (cat === 'vinod') {
       setSelectedSupervisor(null);
       setUsername('vinod');
@@ -282,14 +276,10 @@ export default function LoginModal({
           <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 text-center">
             Select Your Role
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button type="button" onClick={() => handleSelectRoleCategory('supervisors')} className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${selectedRoleCategory === 'supervisors' ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold shadow-sm' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'}`}>
               <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span className="block truncate font-semibold">Supervisors</span>
-            </button>
-            <button type="button" onClick={() => handleSelectRoleCategory('rohitha')} className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${selectedRoleCategory === 'rohitha' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-sm' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'}`}>
-              <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="block truncate font-semibold">Mr. Rohitha</span>
             </button>
             <button type="button" onClick={() => handleSelectRoleCategory('niranjan')} className={`p-2.5 rounded-xl border text-xs text-center transition flex flex-col items-center justify-center gap-1 ${selectedRoleCategory === 'niranjan' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-sm' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'}`}>
               <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />

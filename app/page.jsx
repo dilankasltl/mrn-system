@@ -110,7 +110,7 @@ export default function HomePage() {
     try {
       const params = new URLSearchParams();
 
-      const isGlobalManager = ['admin', 'stores', 'management_niranjan', 'management_vinod', 'management_rohitha'].includes(currentUser.role);
+      const isGlobalManager = ['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser.role);
       const activeDept = isGlobalManager ? selectedDeptFilter : (currentUser.department || 'Production');
 
       if (activeDept && activeDept !== 'ALL') {
@@ -225,8 +225,6 @@ export default function HomePage() {
     setCurrentUser(loggedUser);
     if (loggedUser.role === 'supervisor' && loggedUser.department) {
       setSelectedDeptFilter(loggedUser.department);
-    } else if (loggedUser.role === 'management_rohitha' && loggedUser.department) {
-      setSelectedDeptFilter('ALL');
     } else {
       setSelectedDeptFilter('ALL');
     }
@@ -345,7 +343,7 @@ export default function HomePage() {
 
               {/* Department & Status Filters */}
               <div className="flex flex-wrap items-center gap-2">
-                {['admin', 'stores', 'management_niranjan', 'management_vinod', 'management_rohitha'].includes(currentUser.role) ? (
+                {['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser.role) ? (
                   <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs">
                     <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <select
@@ -447,7 +445,7 @@ export default function HomePage() {
               </div>
 
               <div onClick={() => setSelectedStatusFilter('PENDING_MANAGEMENT')} className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedStatusFilter === 'PENDING_MANAGEMENT' ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
-                <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">Pending Mr. Niranjan / Mr. Rohitha / Mr. Vinod</div>
+                <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">Pending Mr. Niranjan / Mr. Vinod</div>
                 <div className="text-xl font-black text-purple-700 dark:text-purple-400">
                   {mrns.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length}
                 </div>
@@ -516,8 +514,8 @@ export default function HomePage() {
                               <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.supervisorApproval?.approved ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.supervisorApproval?.approved ? `Supervisor: ${m.supervisorApproval.approvedBy}` : 'Supervisor: Pending'}>
                                 Sup {m.supervisorApproval?.approved ? '✓' : '...'}
                               </span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.niranjanApproval?.approved ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.niranjanApproval?.approved ? `Approved by ${m.niranjanApproval.approvedBy}` : 'Mr. Niranjan / Mr. Rohitha: Pending'}>
-                                {m.niranjanApproval?.approved ? `${m.niranjanApproval.approvedBy?.includes('Rohitha') ? 'Mr. Rohitha' : 'Mr. Niranjan'} ✓` : 'Niranjan/Rohitha ...'}
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.niranjanApproval?.approved ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.niranjanApproval?.approved ? `Approved by ${m.niranjanApproval.approvedBy}` : 'Mr. Niranjan: Pending'}>
+                                {m.niranjanApproval?.approved ? 'Mr. Niranjan ✓' : 'Mr. Niranjan ...'}
                               </span>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${m.vinodApproval?.approved ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`} title={m.vinodApproval?.approved ? (m.vinodApproval.withoutNiranjan ? 'Approved by Mr. Vinod (Without Mr. Niranjan Approval)' : 'Approved by Mr. Vinod') : 'Mr. Vinod: Pending'}>
                                 Mr. Vinod {m.vinodApproval?.approved ? '✓' : '...'}

@@ -307,9 +307,9 @@ export default function MRNDetailsModal({
             <span className="font-bold text-slate-900 dark:text-white text-sm">{mrn.requestedBy}</span>
           </div>
           <div>
-            <span className="text-slate-400 dark:text-slate-500 block font-medium">Date & Shift</span>
+            <span className="text-slate-400 dark:text-slate-500 block font-medium">Date</span>
             <span className="font-bold text-slate-800 dark:text-slate-200">
-              {new Date(mrn.date).toLocaleDateString()} ({mrn.shift || 'General'})
+              {new Date(mrn.date).toLocaleDateString()}
             </span>
           </div>
         </div>
@@ -331,14 +331,14 @@ export default function MRNDetailsModal({
               </div>
             </div>
 
-            {/* 2. Mr. Niranjan */}
+            {/* 2. Mr. Niranjan / Mr. Rohitha */}
             <div className={`p-3 rounded-xl border transition ${niranjanApproved ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}>
               <div className="flex items-center justify-between mb-1">
-                <span className="font-bold">2. Mr. Niranjan</span>
+                <span className="font-bold">2. Mr. Niranjan / Mr. Rohitha</span>
                 {niranjanApproved ? <CheckCircle className="w-4 h-4 text-blue-600" /> : <Clock className="w-4 h-4 text-slate-400" />}
               </div>
               <div className="text-[11px]">
-                {niranjanApproved ? (<><div className="font-semibold">Approved by Mr. Niranjan</div><div className="text-blue-700 dark:text-blue-400 text-[10px]">{mrn.niranjanApproval?.approvedAt && new Date(mrn.niranjanApproval.approvedAt).toLocaleString()}</div></>) : (<span className="text-slate-400 font-medium">{supervisorApproved ? 'Pending Sign-off' : 'Waiting for Supervisor'}</span>)}
+                {niranjanApproved ? (<><div className="font-semibold">{mrn.niranjanApproval?.approvedBy || 'Approved'}</div><div className="text-blue-700 dark:text-blue-400 text-[10px]">{mrn.niranjanApproval?.approvedAt && new Date(mrn.niranjanApproval.approvedAt).toLocaleString()}</div></>) : (<span className="text-slate-400 font-medium">{supervisorApproved ? 'Pending Sign-off' : 'Waiting for Supervisor'}</span>)}
               </div>
             </div>
 
@@ -498,10 +498,12 @@ export default function MRNDetailsModal({
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-4 rounded-2xl mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <UserCheck className="w-4 h-4 text-blue-600" />
-                <h4 className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wide">Mr. Niranjan - Plant Approval</h4>
+                <h4 className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wide">
+                  Mr. Niranjan - Plant Approval
+                </h4>
               </div>
               <div className="flex items-center gap-3">
-                <input type="text" placeholder="Mr. Niranjan comments / note (optional)" value={approvalComments} onChange={(e) => setApprovalComments(e.target.value)} className="flex-1 text-xs p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-blue-300 dark:border-blue-700 rounded-xl focus:outline-none" />
+                <input type="text" placeholder="Comments / note (optional)" value={approvalComments} onChange={(e) => setApprovalComments(e.target.value)} className="flex-1 text-xs p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-blue-300 dark:border-blue-700 rounded-xl focus:outline-none" />
                 <button onClick={() => handleApprovalAction('niranjan')} disabled={loading} className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow">
                   {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />} Approve as Mr. Niranjan
                 </button>

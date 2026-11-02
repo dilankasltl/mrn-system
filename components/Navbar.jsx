@@ -66,8 +66,6 @@ export default function Navbar({
     switch (currentUser.role) {
       case 'management_niranjan':
         return 'Mr. Niranjan';
-      case 'management_rohitha':
-        return 'Mr. Rohitha';
       case 'management_vinod':
         return 'Mr. Vinod';
       case 'stores':
@@ -91,16 +89,6 @@ export default function Navbar({
           m.department === currentUser.department &&
           !m.supervisorApproval?.approved &&
           m.status === 'PENDING_SUPERVISOR'
-      );
-    }
-
-    if (currentUser.role === 'management_rohitha') {
-      return mrns.filter(
-        (m) =>
-          // Pending HRD supervisor approval
-          (m.department === 'HRD & Admin' && !m.supervisorApproval?.approved && m.status === 'PENDING_SUPERVISOR') ||
-          // OR Pending plant management approval (same as Niranjan)
-          (m.supervisorApproval?.approved && !m.niranjanApproval?.approved && m.status !== 'ISSUED' && m.status !== 'REJECTED')
       );
     }
 
