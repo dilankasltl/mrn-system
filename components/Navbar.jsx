@@ -116,6 +116,7 @@ export default function Navbar({
       return mrns.filter(
         (m) =>
           m.supervisorApproval?.approved &&
+          (m.vinodApproval?.approved || m.status === 'APPROVED') &&
           !m.storesIssue?.issued &&
           m.status !== 'REJECTED'
       );

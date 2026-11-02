@@ -588,14 +588,14 @@ export default function HomePage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setSelectedStatusFilter('APPROVED'); setApprovalHistoryFilter('ALL'); }}
+                      onClick={() => { setSelectedStatusFilter('READY_TO_ISSUE'); setApprovalHistoryFilter('ALL'); }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                        selectedStatusFilter === 'APPROVED'
+                        selectedStatusFilter === 'READY_TO_ISSUE'
                           ? 'bg-emerald-600 text-white'
                           : 'text-emerald-800 dark:text-emerald-300'
                       }`}
                     >
-                      Ready to Issue
+                      Ready to Issue (Authorized)
                     </button>
                     <button
                       type="button"

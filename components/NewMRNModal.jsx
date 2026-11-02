@@ -208,8 +208,8 @@ export default function NewMRNModal({
                   <tr>
                     <th className="py-2.5 px-3 w-12 text-center">NO.</th>
                     <th className="py-2.5 px-3">Description</th>
-                    <th className="py-2.5 px-3 w-32">Material Request QTY</th>
-                    <th className="py-2.5 px-3 w-24">Unit</th>
+                    <th className="py-2.5 px-3 w-36">Material Request QTY</th>
+                    <th className="py-2.5 px-3 w-36 text-center">Material Issued QTY</th>
                     <th className="py-2.5 px-3">Remarks</th>
                     <th className="py-2.5 px-3 w-10 text-center"></th>
                   </tr>
@@ -243,10 +243,10 @@ export default function NewMRNModal({
                       <td className="py-2 px-3">
                         <input
                           type="text"
-                          placeholder="Nos, Kg, Pcs..."
-                          value={row.unit}
-                          onChange={(e) => handleItemChange(idx, 'unit', e.target.value)}
-                          className="w-full text-xs p-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-lg focus:border-sky-500 focus:outline-none"
+                          disabled
+                          value="Filled by Stores"
+                          className="w-full text-xs p-2 bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg cursor-not-allowed italic text-center font-medium"
+                          title="This field is filled exclusively by the Stores Department when materials are issued"
                         />
                       </td>
                       <td className="py-2 px-3">

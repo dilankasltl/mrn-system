@@ -74,9 +74,10 @@ export async function GET(req) {
         andConditions.push({
           $or: [{ status: 'ISSUED' }, { isLocked: true }],
         });
-      } else if (status === 'APPROVED') {
+      } else if (status === 'READY_TO_ISSUE' || status === 'APPROVED') {
         andConditions.push({
-          status: 'APPROVED',
+          'supervisorApproval.approved': true,
+          $or: [{ 'vinodApproval.approved': true }, { status: 'APPROVED' }],
           'storesIssue.issued': { $ne: true },
         });
       } else {
@@ -101,6 +102,7 @@ export async function GET(req) {
       if (status === 'READY_TO_ISSUE') {
         andConditions.push({
           'supervisorApproval.approved': true,
+          $or: [{ 'vinodApproval.approved': true }, { status: 'APPROVED' }],
           'storesIssue.issued': { $ne: true },
         });
       }

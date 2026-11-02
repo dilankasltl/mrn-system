@@ -217,9 +217,12 @@ export default function MRNDetailsModal({
     !vinodApproved &&
     (currentUser.role === 'admin' || currentUser.role === 'management_vinod');
 
+  const isManagementApproved = vinodApproved || mrn.status === 'APPROVED';
+
   const canStoresIssue =
     !isIssued &&
     supervisorApproved &&
+    isManagementApproved &&
     (currentUser.role === 'admin' || currentUser.role === 'stores');
 
   const hasAnyAction =
@@ -331,10 +334,10 @@ export default function MRNDetailsModal({
               </div>
             </div>
 
-            {/* 2. Mr. Niranjan / Mr. Rohitha */}
+            {/* 2. Mr. Niranjan */}
             <div className={`p-3 rounded-xl border transition ${niranjanApproved ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}>
               <div className="flex items-center justify-between mb-1">
-                <span className="font-bold">2. Mr. Niranjan / Mr. Rohitha</span>
+                <span className="font-bold">2. Mr. Niranjan</span>
                 {niranjanApproved ? <CheckCircle className="w-4 h-4 text-blue-600" /> : <Clock className="w-4 h-4 text-slate-400" />}
               </div>
               <div className="text-[11px]">
@@ -360,7 +363,7 @@ export default function MRNDetailsModal({
                 {isIssued ? <PackageCheck className="w-4 h-4 text-emerald-600" /> : <Clock className="w-4 h-4 text-slate-400" />}
               </div>
               <div className="text-[11px]">
-                {isIssued ? (<><div className="font-semibold">{mrn.storesIssue?.issuedBy || 'Issued'}</div><div className="text-emerald-700 dark:text-emerald-400 text-[10px]">{mrn.storesIssue?.issuedAt && new Date(mrn.storesIssue.issuedAt).toLocaleString()}</div></>) : (<span className="text-slate-400 font-medium">{vinodApproved || (supervisorApproved && niranjanApproved) ? 'Ready to Issue' : 'Pending Approvals'}</span>)}
+                {isIssued ? (<><div className="font-semibold">{mrn.storesIssue?.issuedBy || 'Issued'}</div><div className="text-emerald-700 dark:text-emerald-400 text-[10px]">{mrn.storesIssue?.issuedAt && new Date(mrn.storesIssue.issuedAt).toLocaleString()}</div></>) : (<span className="text-slate-400 font-medium">{isManagementApproved ? 'Ready to Issue' : 'Pending Approvals'}</span>)}
               </div>
             </div>
           </div>
@@ -380,7 +383,7 @@ export default function MRNDetailsModal({
                   <th className="py-2.5 px-3 w-12 text-center">NO.</th>
                   <th className="py-2.5 px-3">Description</th>
                   <th className="py-2.5 px-3 w-32">Material Request QTY</th>
-                  <th className="py-2.5 px-3 w-36">Material Issue QTY</th>
+                  <th className="py-2.5 px-3 w-36">Material Issued QTY</th>
                   <th className="py-2.5 px-3">Remarks</th>
                   <th className="py-2.5 px-3 w-28 text-center">Status</th>
                 </tr>
@@ -431,6 +434,19 @@ export default function MRNDetailsModal({
 
         {/* Interactive Action Control Section based on Role */}
         <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 print:hidden">
+          {/* Stores Warning if awaiting Management */}
+          {currentUser.role === 'stores' && !isIssued && supervisorApproved && !isManagementApproved && (
+            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-4 rounded-2xl mb-4 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3 shadow-sm">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block text-sm mb-0.5">Management Authorization Required</span>
+                <span>
+                  Supervisor has approved this MRN, but it is currently awaiting Management authorization (Mr. Vinod).
+                  Stores cannot issue materials until Management approval is granted.
+                </span>
+              </div>
+            </div>
+          )}
           {/* 1. Supervisor Approval Action - WITH EDITABLE ITEMS */}
           {canApproveAsSupervisor && (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl mb-4">
