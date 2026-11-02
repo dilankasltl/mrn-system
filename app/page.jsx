@@ -8,6 +8,7 @@ import MRNDetailsModal from '@/components/MRNDetailsModal';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import AdminPanel from '@/components/AdminPanel';
 import LoginModal from '@/components/LoginModal';
+import NotificationToast from '@/components/NotificationToast';
 import {
   Search,
   Filter,
@@ -28,6 +29,11 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { exportMRNsToExcel } from '@/lib/exportExcel';
+import {
+  playNotificationSound,
+  requestNotificationPermission,
+  showBrowserNotification,
+} from '@/lib/notificationAudio';
 
 export default function HomePage() {
   const [theme, setTheme] = useState('light');
@@ -88,6 +94,11 @@ export default function HomePage() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [approvalHistoryFilter, setApprovalHistoryFilter] = useState('ALL'); // 'ALL' | 'MY_APPROVALS' | 'PENDING_ME'
+
+  // Live Toast Notifications & Sound State
+  const [toasts, setToasts] = useState([]);
+  const lastKnownPendingIds = React.useRef(new Set());
+  const hasInitialPolled = React.useRef(false);
 
   // Manage Theme
   useEffect(() => {
@@ -238,6 +249,105 @@ export default function HomePage() {
     currentUser.role,
     currentUser.department,
   ]);
+
+  // Real-Time Live Polling for Notifications & Bell Count (every 15s)
+  useEffect(() => {
+    if (!currentUser.isAuthenticated || currentUser.role === 'department') return;
+
+    // Request desktop permission on sign-in
+    requestNotificationPermission();
+
+    const checkNewNotifications = async () => {
+      try {
+        const res = await fetch('/api/mrn?limit=100');
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.mrns)) return;
+
+        const currentMrns = data.mrns;
+
+        // Filter what is pending for current user
+        let userPending = [];
+        if (currentUser.role === 'supervisor') {
+          userPending = currentMrns.filter(
+            (m) =>
+              m.department === currentUser.department &&
+              !m.supervisorApproval?.approved &&
+              m.status === 'PENDING_SUPERVISOR'
+          );
+        } else if (currentUser.role === 'management_niranjan') {
+          userPending = currentMrns.filter(
+            (m) =>
+              m.supervisorApproval?.approved &&
+              !m.niranjanApproval?.approved &&
+              m.status !== 'ISSUED' &&
+              m.status !== 'REJECTED'
+          );
+        } else if (currentUser.role === 'management_vinod') {
+          userPending = currentMrns.filter(
+            (m) =>
+              m.supervisorApproval?.approved &&
+              !m.vinodApproval?.approved &&
+              m.status !== 'ISSUED' &&
+              m.status !== 'REJECTED'
+          );
+        } else if (currentUser.role === 'stores') {
+          userPending = currentMrns.filter(
+            (m) =>
+              m.supervisorApproval?.approved &&
+              (m.vinodApproval?.approved || m.status === 'APPROVED') &&
+              !m.storesIssue?.issued &&
+              m.status !== 'REJECTED'
+          );
+        }
+
+        const pendingIds = new Set(userPending.map((m) => m._id));
+
+        // If after initial poll, detect new arrivals
+        if (hasInitialPolled.current) {
+          const newArrivals = userPending.filter((m) => !lastKnownPendingIds.current.has(m._id));
+          if (newArrivals.length > 0) {
+            playNotificationSound();
+            const newest = newArrivals[0];
+            const toastId = Date.now();
+            setToasts((prev) => [
+              {
+                id: toastId,
+                title: 'New Requisition Pending Action',
+                message: `${newest.department} - ${newest.requestedBy} (${newest.items?.length || 0} items)`,
+                mrn: newest,
+              },
+              ...prev.slice(0, 4),
+            ]);
+
+            setTimeout(() => {
+              setToasts((prev) => prev.filter((t) => t.id !== toastId));
+            }, 7000);
+
+            showBrowserNotification(
+              `Sundaram MRN Action Required: ${newest.mrnNo}`,
+              `New requisition from ${newest.department} by ${newest.requestedBy} requires your review.`,
+              () => setSelectedMRN(newest)
+            );
+
+            // Update live data silently
+            setAllMrns(currentMrns);
+            fetchMRNs();
+            fetchStats();
+          }
+        } else {
+          hasInitialPolled.current = true;
+        }
+
+        lastKnownPendingIds.current = pendingIds;
+        setAllMrns(currentMrns);
+      } catch (err) {
+        // silent polling catch
+      }
+    };
+
+    const interval = setInterval(checkNewNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   // Handle Search for single MRN
   const handleSearchMRN = async (mrnNo) => {
@@ -869,6 +979,13 @@ export default function HomePage() {
           fetchStats();
         }}
         onOpenLogin={() => setIsLoginModalOpen(true)}
+      />
+
+      {/* Floating Real-Time Notification Toasts */}
+      <NotificationToast
+        toasts={toasts}
+        onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
+        onSelectMRN={(m) => setSelectedMRN(m)}
       />
     </div>
   );
