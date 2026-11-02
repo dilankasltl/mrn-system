@@ -27,7 +27,7 @@ export const SUPERVISORS_DATA = [
   { username: 'vidura', name: 'Mr. Vidura', department: 'Finance & Accounting', defaultPass: 'Vidura@123' },
   { username: 'pavithra', name: 'Mrs. Pavithra', department: 'Finance & Accounting', defaultPass: 'Pavithra@123' },
   { username: 'rohitha', name: 'Mr. Rohitha', department: 'HRD & Admin', defaultPass: 'Rohitha@123' },
-  { username: 'tharindu', name: 'Mr. Tharindu', department: 'IT', defaultPass: 'Tharindu@123' },
+  { username: 'tharidu', name: 'Mr. Tharidu', department: 'IT', defaultPass: 'Tharidu@123' },
   { username: 'wickrama', name: 'Mr. Wickrama', department: 'Quality Assurance', defaultPass: 'Wickrama@123' },
   { username: 'dulan', name: 'Mr. Dulan', department: 'Quality Assurance', defaultPass: 'Dulan@123' },
   { username: 'ravimal', name: 'Mr. Ravimal', department: 'Production', defaultPass: 'Ravimal@123' },
@@ -39,10 +39,15 @@ export const SUPERVISORS_DATA = [
   { username: 'dimuthu', name: 'Mr. Dimuthu', department: 'Finished Goods Store', defaultPass: 'Dimuthu@123' },
   { username: 'manjula', name: 'Mr. Manjula', department: 'Purchasing', defaultPass: 'Manjula@123' },
   { username: 'gayashan', name: 'Mr. Gayashan', department: 'Purchasing', defaultPass: 'Gayashan@123' },
+  { username: 'basker', name: 'Mr. Basker', department: 'Raw Material Store', defaultPass: 'Basker@123' },
   { username: 'thushara', name: 'Mr. Thushara', department: 'Shift A', defaultPass: 'Thushara@123' },
   { username: 'rusiru', name: 'Mr. Rusiru', department: 'Shift A', defaultPass: 'Rusiru@123' },
   { username: 'rathnayake', name: 'Mr. Rathnayake', department: 'Shift B', defaultPass: 'Rathnayake@123' },
   { username: 'viraj', name: 'Mr. Viraj', department: 'Shift C', defaultPass: 'Viraj@123' },
+  { username: 'manju', name: 'Mr. Manju', department: 'EDC', defaultPass: 'Manju@123' },
+  { username: 'chathuranga', name: 'Mr. Chathuranga', department: 'Mould', defaultPass: 'Chathuranga@123' },
+  { username: 'jinendra', name: 'Mr. Jinendra', department: 'Logistic', defaultPass: 'Jinendra@123' },
+  { username: 'nilantha', name: 'Mr. Nilantha', department: 'Logistic', defaultPass: 'Nilantha@123' },
 ];
 
 export default function LandingPortal({
