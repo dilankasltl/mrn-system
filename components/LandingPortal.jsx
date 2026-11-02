@@ -411,7 +411,7 @@ export default function LandingPortal({
             </div>
 
             {/* Department Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-96 overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
               {filteredDepartments.map((dept) => (
                 <button
                   key={dept.name}
