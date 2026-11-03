@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -26,31 +26,86 @@ import {
   Building2,
   RefreshCw,
   Search,
+  Shield,
+  UserCheck,
 } from 'lucide-react';
 import { exportMRNsToExcel } from '@/lib/exportExcel';
 
 const COLORS = ['#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#64748b'];
 
-export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefresh }) {
+export default function AnalyticsDashboard({
+  mrns = [],
+  currentUser,
+  departments = [],
+  stats,
+  loading,
+  onRefresh,
+}) {
   const [viewMode, setViewMode] = useState('both');
+
+  // Role permissions
+  const isGlobalRole = ['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(currentUser?.role);
+  const isSupervisor = currentUser?.role === 'supervisor';
+  const isDepartmentRole = currentUser?.role === 'department';
+
+  // Determine authorized departments for this specific user
+  const authorizedDepartments = useMemo(() => {
+    if (isGlobalRole) {
+      return departments.map((d) => d.name);
+    }
+    if (isSupervisor) {
+      const supName = currentUser?.name?.toLowerCase().trim();
+      const matched = departments
+        .filter((d) =>
+          (d.supervisors || []).some((s) => {
+            const sName = s.name?.toLowerCase().trim();
+            return sName && (sName === supName || sName.includes(supName) || supName.includes(sName));
+          })
+        )
+        .map((d) => d.name);
+
+      if (matched.length > 0) return matched;
+      return currentUser?.department ? [currentUser.department] : [];
+    }
+    // Department role
+    return currentUser?.department ? [currentUser.department] : [];
+  }, [currentUser, departments, isGlobalRole, isSupervisor]);
+
+  // Initial department state
+  const [selectedDept, setSelectedDept] = useState(() => {
+    if (isDepartmentRole) return currentUser?.department || 'ALL';
+    if (isSupervisor && authorizedDepartments.length === 1) return authorizedDepartments[0];
+    return 'ALL';
+  });
+
+  // Keep selectedDept in sync if user changes
+  useEffect(() => {
+    if (isDepartmentRole) {
+      setSelectedDept(currentUser?.department || 'ALL');
+    } else if (isSupervisor && authorizedDepartments.length === 1) {
+      setSelectedDept(authorizedDepartments[0]);
+    }
+  }, [currentUser, isDepartmentRole, isSupervisor, authorizedDepartments]);
 
   // Date filter states: 'all' | 'today' | 'yesterday' | 'this_month' | 'last_month' | 'custom'
   const [datePreset, setDatePreset] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [selectedDept, setSelectedDept] = useState('ALL');
   const [approvalFilter, setApprovalFilter] = useState('ALL'); // 'ALL' | 'NIRANJAN' | 'VINOD' | 'SUPERVISOR'
 
-  // Extract all unique departments present
+  // Extract available departments for dropdown
   const availableDepts = useMemo(() => {
-    const set = new Set();
-    mrns.forEach((m) => {
-      if (m.department) set.add(m.department);
-    });
-    return Array.from(set).sort();
-  }, [mrns]);
+    if (isGlobalRole) {
+      const set = new Set(departments.map((d) => d.name));
+      mrns.forEach((m) => {
+        if (m.department) set.add(m.department);
+      });
+      return Array.from(set).sort();
+    }
+    return authorizedDepartments;
+  }, [isGlobalRole, departments, mrns, authorizedDepartments]);
 
-  // Compute filtered MRNs based on datePreset, custom dates, department, and approvalFilter
+  // Compute filtered MRNs strictly scoped by role, department authorization, date, and approver
   const filteredMRNs = useMemo(() => {
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
@@ -67,17 +122,34 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
     const lastMonthIndex = lastMonthDate.getMonth();
 
     return mrns.filter((m) => {
-      // 1. Department Filter
+      // 1. Strict Department Access Control:
+      // Department roles only see their own department.
+      // Supervisors only see their supervised departments.
+      if (!isGlobalRole) {
+        if (!authorizedDepartments.includes(m.department)) {
+          return false;
+        }
+      }
+
+      // 2. Management Isolation:
+      // Mr. Niranjan and Mr. Vinod only see supervisor-approved MRNs
+      if (currentUser?.role === 'management_niranjan' || currentUser?.role === 'management_vinod') {
+        if (!m.supervisorApproval?.approved) {
+          return false;
+        }
+      }
+
+      // 3. User's Selected Department Filter
       if (selectedDept !== 'ALL' && m.department !== selectedDept) {
         return false;
       }
 
-      // 2. Approver Filter
+      // 4. Approver Filter
       if (approvalFilter === 'NIRANJAN' && !m.niranjanApproval?.approved) return false;
       if (approvalFilter === 'VINOD' && !m.vinodApproval?.approved) return false;
       if (approvalFilter === 'SUPERVISOR' && !m.supervisorApproval?.approved) return false;
 
-      // 3. Date Filter
+      // 5. Date Filter
       if (!m.date) return true;
       const mDate = new Date(m.date);
       const mDateStr = mDate.toISOString().slice(0, 10);
@@ -105,7 +177,17 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
 
       return true;
     });
-  }, [mrns, selectedDept, approvalFilter, datePreset, customStartDate, customEndDate]);
+  }, [
+    mrns,
+    isGlobalRole,
+    authorizedDepartments,
+    currentUser,
+    selectedDept,
+    approvalFilter,
+    datePreset,
+    customStartDate,
+    customEndDate,
+  ]);
 
   // Handle Export to Excel
   const handleExport = () => {
@@ -113,9 +195,15 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
     if (datePreset === 'custom' && customStartDate) {
       dateLabel = `${customStartDate}_to_${customEndDate || 'now'}`;
     }
+    const exportTitle = isDepartmentRole
+      ? `${currentUser?.department || 'Dept'}_MRN_Analytics`
+      : isSupervisor
+      ? `Supervisor_${currentUser?.name?.replace(/[^a-zA-Z0-9]/g, '_')}_Analytics`
+      : 'Sundaram_MRN_Analytics';
+
     exportMRNsToExcel(filteredMRNs, {
-      title: 'Sundaram_MRN_Analytics',
-      department: selectedDept,
+      title: exportTitle,
+      department: selectedDept !== 'ALL' ? selectedDept : isDepartmentRole ? currentUser?.department : 'My_Authorized',
       dateRangeLabel: dateLabel,
     });
   };
@@ -145,9 +233,18 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
   const statusCounts = useMemo(() => {
     return {
       'Pending Supervisor': filteredMRNs.filter((m) => m.status === 'PENDING_SUPERVISOR').length,
-      'Pending Mr. Niranjan': filteredMRNs.filter((m) => m.supervisorApproval?.approved && !m.niranjanApproval?.approved && m.status !== 'ISSUED').length,
-      'Pending Mr. Vinod': filteredMRNs.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length,
-      'Ready for Stores': filteredMRNs.filter((m) => (m.status === 'APPROVED' || m.supervisorApproval?.approved) && !m.storesIssue?.issued).length,
+      'Pending Mr. Niranjan': filteredMRNs.filter(
+        (m) => m.supervisorApproval?.approved && !m.niranjanApproval?.approved && m.status !== 'ISSUED'
+      ).length,
+      'Pending Mr. Vinod': filteredMRNs.filter(
+        (m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED'
+      ).length,
+      'Ready for Stores': filteredMRNs.filter(
+        (m) =>
+          (m.status === 'APPROVED' || m.vinodApproval?.approved) &&
+          !m.storesIssue?.issued &&
+          m.status !== 'REJECTED'
+      ).length,
       'Issued & Locked': filteredMRNs.filter((m) => m.status === 'ISSUED' || m.isLocked).length,
     };
   }, [filteredMRNs]);
@@ -164,12 +261,22 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
       <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <BarChart2 className="w-5 h-5 text-sky-500" />
-              MRN Analytics & Department History
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Filter by month, day, date range, or department and export comprehensive Excel reports.
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                {isDepartmentRole
+                  ? `${currentUser?.department} Department Analytics & History`
+                  : isSupervisor
+                  ? `Supervisor Analytics — ${currentUser?.name}`
+                  : 'Plant-wide MRN Analytics & Reports'}
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {isDepartmentRole
+                ? `Authorized view strictly isolated to ${currentUser?.department} requisitions and store issuances.`
+                : isSupervisor
+                ? `Filtered strictly to your assigned departments: ${authorizedDepartments.join(', ')}.`
+                : 'Real-time plant requisition tracking, department consumption, approvals, and Stores issuance.'}
             </p>
           </div>
 
@@ -178,20 +285,32 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
             <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl flex items-center text-xs font-semibold">
               <button
                 onClick={() => setViewMode('both')}
-                className={`px-3 py-1 rounded-lg transition ${viewMode === 'both' ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                className={`px-3 py-1 rounded-lg transition ${
+                  viewMode === 'both'
+                    ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-white'
+                    : 'text-slate-500 dark:text-slate-400'
+                }`}
               >
                 All
               </button>
               <button
                 onClick={() => setViewMode('charts')}
-                className={`px-3 py-1 rounded-lg transition ${viewMode === 'charts' ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                className={`px-3 py-1 rounded-lg transition ${
+                  viewMode === 'charts'
+                    ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-white'
+                    : 'text-slate-500 dark:text-slate-400'
+                }`}
               >
                 <BarChart2 className="w-3.5 h-3.5 inline mr-1" />
                 Charts
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`px-3 py-1 rounded-lg transition ${viewMode === 'table' ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                className={`px-3 py-1 rounded-lg transition ${
+                  viewMode === 'table'
+                    ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-white'
+                    : 'text-slate-500 dark:text-slate-400'
+                }`}
               >
                 <TableIcon className="w-3.5 h-3.5 inline mr-1" />
                 Table
@@ -251,22 +370,56 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
 
           {/* Department Filter & Approver Filter */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Department Dropdown */}
-            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl">
-              <Building2 className="w-3.5 h-3.5 text-slate-400" />
-              <select
-                value={selectedDept}
-                onChange={(e) => setSelectedDept(e.target.value)}
-                className="bg-transparent text-slate-700 dark:text-slate-200 font-medium focus:outline-none text-xs"
+            {/* Department Scoping Display */}
+            {isDepartmentRole ? (
+              // Locked to single department for department requester
+              <div
+                className="flex items-center gap-2 bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-800 px-3 py-1.5 rounded-xl text-xs font-bold text-sky-700 dark:text-sky-300 shadow-xs"
+                title={`Analytics locked strictly to ${currentUser?.department}`}
               >
-                <option value="ALL">All Departments</option>
-                {availableDepts.map((d) => (
-                  <option key={d} value={d} className="dark:bg-slate-800">
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <Building2 className="w-3.5 h-3.5 text-sky-500" />
+                <span>{currentUser?.department}</span>
+                <span className="text-[9px] bg-sky-200 dark:bg-sky-900 text-sky-800 dark:text-sky-300 px-1 py-0.2 rounded font-mono">
+                  Locked
+                </span>
+              </div>
+            ) : isSupervisor ? (
+              // Supervisor sees only their supervised departments
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl">
+                <Building2 className="w-3.5 h-3.5 text-amber-500" />
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="bg-transparent text-slate-700 dark:text-slate-200 font-bold focus:outline-none text-xs"
+                >
+                  {authorizedDepartments.length > 1 && (
+                    <option value="ALL">All My Departments ({authorizedDepartments.length})</option>
+                  )}
+                  {authorizedDepartments.map((d) => (
+                    <option key={d} value={d} className="dark:bg-slate-800">
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              // Global management sees all departments
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl">
+                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="bg-transparent text-slate-700 dark:text-slate-200 font-medium focus:outline-none text-xs"
+                >
+                  <option value="ALL">All Departments</option>
+                  {availableDepts.map((d) => (
+                    <option key={d} value={d} className="dark:bg-slate-800">
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Approver Filter */}
             <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl">
@@ -309,7 +462,10 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
             </div>
             {(customStartDate || customEndDate) && (
               <button
-                onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }}
+                onClick={() => {
+                  setCustomStartDate('');
+                  setCustomEndDate('');
+                }}
                 className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold"
               >
                 Clear Dates
@@ -322,15 +478,23 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
       {/* Summary KPI Cards for Filtered Range */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 block uppercase">Matching MRNs</span>
+          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 block uppercase">
+            {isDepartmentRole ? `${currentUser?.department} MRNs` : 'Matching MRNs'}
+          </span>
           <span className="text-2xl font-black text-slate-900 dark:text-white">{filteredMRNs.length}</span>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">In selected period</span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">
+            {isDepartmentRole ? 'This department only' : 'In authorized scope'}
+          </span>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
           <span className="text-xs font-semibold text-amber-500 block uppercase">Pending Management</span>
           <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
-            {filteredMRNs.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length}
+            {
+              filteredMRNs.filter(
+                (m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED'
+              ).length
+            }
           </span>
           <span className="text-[11px] text-amber-700 dark:text-amber-300 block mt-1">Mr. Niranjan / Mr. Vinod</span>
         </div>
@@ -338,7 +502,14 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
           <span className="text-xs font-semibold text-blue-500 block uppercase">Ready at Stores</span>
           <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
-            {filteredMRNs.filter((m) => (m.status === 'APPROVED' || m.supervisorApproval?.approved) && !m.storesIssue?.issued).length}
+            {
+              filteredMRNs.filter(
+                (m) =>
+                  (m.status === 'APPROVED' || m.vinodApproval?.approved) &&
+                  !m.storesIssue?.issued &&
+                  m.status !== 'REJECTED'
+              ).length
+            }
           </span>
           <span className="text-[11px] text-blue-700 dark:text-blue-300 block mt-1">Authorized for issue</span>
         </div>
@@ -358,7 +529,7 @@ export default function AnalyticsDashboard({ mrns = [], stats, loading, onRefres
           {/* Department Requested vs Issued Quantities Bar Chart */}
           <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-4">
-              Material Quantities Requested vs Issued (By Department)
+              Material Quantities Requested vs Issued {isDepartmentRole ? `(${currentUser?.department})` : ''}
             </h3>
             <div className="h-72 w-full">
               {deptChartData.length > 0 ? (

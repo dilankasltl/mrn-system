@@ -360,7 +360,11 @@ export default function Navbar({
             }`}
           >
             <Warehouse className="w-3.5 h-3.5" />
-            Stores & Management Analytics / Reports
+            {currentUser.role === 'department'
+              ? `${currentUser.department || 'Department'} Analytics & History`
+              : currentUser.role === 'supervisor'
+              ? 'Supervisor Analytics & Reports'
+              : 'Stores & Management Analytics / Reports'}
           </button>
 
           {/* Admin panel only visible when logged in as admin */}

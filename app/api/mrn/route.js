@@ -21,15 +21,32 @@ export async function GET(req) {
     const andConditions = [];
 
     // Department isolation
-    if (role === 'department' || role === 'supervisor') {
+    if (role === 'department') {
       const lockedDept = userDept || department;
       if (lockedDept && lockedDept !== 'ALL') {
         andConditions.push({ department: lockedDept });
+      }
+    } else if (role === 'supervisor') {
+      const supervisorDepts = searchParams.get('supervisorDepts');
+      if (department && department !== 'ALL') {
+        andConditions.push({ department });
+      } else if (supervisorDepts) {
+        const depts = supervisorDepts.split(',').map((s) => s.trim()).filter(Boolean);
+        if (depts.length > 0) {
+          andConditions.push({ department: { $in: depts } });
+        }
+      } else if (userDept && userDept !== 'ALL') {
+        andConditions.push({ department: userDept });
       }
     } else {
       if (department && department !== 'ALL') {
         andConditions.push({ department });
       }
+    }
+
+    // Management Isolation: Mr. Niranjan and Mr. Vinod can ONLY view MRNs after Supervisor has approved them!
+    if (role === 'management_niranjan' || role === 'management_vinod') {
+      andConditions.push({ 'supervisorApproval.approved': true });
     }
 
     // Date filtering (day, date range, or month)

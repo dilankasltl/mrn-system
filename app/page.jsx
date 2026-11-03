@@ -135,6 +135,32 @@ export default function HomePage() {
     }
   }, []);
 
+  // Supervised departments for supervisor role
+  const supervisorDepartments = useMemo(() => {
+    if (currentUser?.role !== 'supervisor') return [];
+    const supName = currentUser?.name?.toLowerCase().trim();
+    const matched = departments
+      .filter((d) =>
+        (d.supervisors || []).some((s) => {
+          const sName = s.name?.toLowerCase().trim();
+          return sName && (sName === supName || sName.includes(supName) || supName.includes(sName));
+        })
+      )
+      .map((d) => d.name);
+    if (matched.length > 0) return Array.from(new Set(matched)).sort();
+    return currentUser?.department ? [currentUser.department] : [];
+  }, [currentUser, departments]);
+
+  // Safeguarded MRNs list for active view:
+  // Management View Isolation: Mr. Niranjan and Mr. Vinod ONLY see supervisor-approved MRNs
+  const displayMrns = useMemo(() => {
+    let list = mrns;
+    if (currentUser?.role === 'management_niranjan' || currentUser?.role === 'management_vinod') {
+      list = list.filter((m) => m.supervisorApproval?.approved === true);
+    }
+    return list;
+  }, [mrns, currentUser?.role]);
+
   // Fetch MRNs
   const fetchMRNs = useCallback(async (userOverride = null) => {
     setLoading(true);
@@ -143,10 +169,22 @@ export default function HomePage() {
       const params = new URLSearchParams();
 
       const isGlobalManager = ['admin', 'stores', 'management_niranjan', 'management_vinod'].includes(activeUser.role);
-      const activeDept = isGlobalManager ? selectedDeptFilter : (activeUser.department || 'Production');
+      const isSupervisor = activeUser.role === 'supervisor';
 
-      if (activeDept && activeDept !== 'ALL') {
-        params.append('department', activeDept);
+      if (isGlobalManager) {
+        if (selectedDeptFilter && selectedDeptFilter !== 'ALL') {
+          params.append('department', selectedDeptFilter);
+        }
+      } else if (isSupervisor) {
+        if (selectedDeptFilter && selectedDeptFilter !== 'ALL') {
+          params.append('department', selectedDeptFilter);
+        } else if (supervisorDepartments.length > 0) {
+          params.append('supervisorDepts', supervisorDepartments.join(','));
+        } else if (activeUser.department) {
+          params.append('department', activeUser.department);
+        }
+      } else {
+        params.append('department', activeUser.department || 'Production');
       }
 
       if (selectedStatusFilter !== 'ALL') {
@@ -207,6 +245,7 @@ export default function HomePage() {
     customStartDate,
     customEndDate,
     approvalHistoryFilter,
+    supervisorDepartments,
   ]);
 
   // Fetch Stats
@@ -228,11 +267,23 @@ export default function HomePage() {
     fetchStats();
     fetchMRNs();
 
-    // Fetch all MRNs for track search suggestions
-    fetch('/api/mrn?limit=500')
+    // Fetch all MRNs for track search suggestions and analytics
+    const allMrnsParams = new URLSearchParams({ limit: '500' });
+    if (currentUser?.role) allMrnsParams.append('role', currentUser.role);
+    if (currentUser?.department) allMrnsParams.append('userDept', currentUser.department);
+    if (currentUser?.role === 'supervisor' && supervisorDepartments.length > 0) {
+      allMrnsParams.append('supervisorDepts', supervisorDepartments.join(','));
+    }
+    fetch(`/api/mrn?${allMrnsParams.toString()}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) setAllMrns(data.mrns || []);
+        if (data.success) {
+          let list = data.mrns || [];
+          if (currentUser?.role === 'management_niranjan' || currentUser?.role === 'management_vinod') {
+            list = list.filter((m) => m.supervisorApproval?.approved === true);
+          }
+          setAllMrns(list);
+        }
       })
       .catch((e) => console.error('All MRNs fetch error', e));
 
@@ -248,6 +299,7 @@ export default function HomePage() {
     approvalHistoryFilter,
     currentUser.role,
     currentUser.department,
+    supervisorDepartments,
   ]);
 
   // Real-Time Live Polling for Notifications & Bell Count (every 15s)
@@ -268,9 +320,10 @@ export default function HomePage() {
         // Filter what is pending for current user
         let userPending = [];
         if (currentUser.role === 'supervisor') {
+          const supDepts = supervisorDepartments.length > 0 ? supervisorDepartments : [currentUser.department];
           userPending = currentMrns.filter(
             (m) =>
-              m.department === currentUser.department &&
+              supDepts.includes(m.department) &&
               !m.supervisorApproval?.approved &&
               m.status === 'PENDING_SUPERVISOR'
           );
@@ -421,7 +474,7 @@ export default function HomePage() {
     if (dateFilter === 'CUSTOM' && customStartDate) {
       dateLabel = `${customStartDate}_to_${customEndDate || 'now'}`;
     }
-    exportMRNsToExcel(mrns, {
+    exportMRNsToExcel(displayMrns, {
       title: 'Sundaram_MRN_History',
       department: selectedDeptFilter,
       dateRangeLabel: dateLabel,
@@ -542,6 +595,22 @@ export default function HomePage() {
                         ))}
                       </select>
                     </div>
+                  ) : currentUser.role === 'supervisor' && supervisorDepartments.length > 1 ? (
+                    <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/80 px-3 py-2 rounded-xl text-xs">
+                      <Building2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <select
+                        value={selectedDeptFilter}
+                        onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                        className="bg-transparent text-amber-900 dark:text-amber-200 font-semibold focus:outline-none text-xs"
+                      >
+                        <option value="ALL">All Supervised Depts ({supervisorDepartments.length})</option>
+                        {supervisorDepartments.map((deptName) => (
+                          <option key={deptName} value={deptName} className="dark:bg-slate-800">
+                            {deptName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   ) : (
                     <div className="flex flex-col gap-1.5">
                       <div
@@ -551,7 +620,7 @@ export default function HomePage() {
                         <Building2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                         <span>{currentUser.department || 'Department'}</span>
                         <span className="text-[10px] bg-sky-200 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300 px-1.5 py-0.5 rounded font-mono font-semibold">
-                          Department
+                          {currentUser.role === 'supervisor' ? 'Supervisor' : 'Department'}
                         </span>
                       </div>
                     </div>
@@ -753,39 +822,99 @@ export default function HomePage() {
                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
               >
-                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Total Listed</div>
-                <div className="text-xl font-black text-slate-900 dark:text-white">{mrns.length}</div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                  {currentUser.role === 'management_niranjan' || currentUser.role === 'management_vinod'
+                    ? 'Supervisor Approved Total'
+                    : 'Total Listed'}
+                </div>
+                <div className="text-xl font-black text-slate-900 dark:text-white">{displayMrns.length}</div>
               </div>
 
-              <div
-                onClick={() => setSelectedStatusFilter('PENDING_SUPERVISOR')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
-                  selectedStatusFilter === 'PENDING_SUPERVISOR'
-                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase">Pending Supervisor</div>
-                <div className="text-xl font-black text-amber-700 dark:text-amber-400">
-                  {mrns.filter((m) => m.status === 'PENDING_SUPERVISOR').length}
-                </div>
-              </div>
+              {currentUser.role === 'management_niranjan' ? (
+                <>
+                  <div
+                    onClick={() => { setSelectedStatusFilter('ALL'); setApprovalHistoryFilter('PENDING_ME'); }}
+                    className="p-3.5 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 cursor-pointer hover:border-amber-300 transition"
+                  >
+                    <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase">
+                      Pending My Review
+                    </div>
+                    <div className="text-xl font-black text-amber-700 dark:text-amber-400">
+                      {displayMrns.filter((m) => !m.niranjanApproval?.approved && m.status !== 'REJECTED' && m.status !== 'ISSUED').length}
+                    </div>
+                  </div>
 
-              <div
-                onClick={() => setSelectedStatusFilter('PENDING_MANAGEMENT')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition ${
-                  selectedStatusFilter === 'PENDING_MANAGEMENT'
-                    ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">
-                  Pending Mr. Niranjan / Mr. Vinod
-                </div>
-                <div className="text-xl font-black text-purple-700 dark:text-purple-400">
-                  {mrns.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length}
-                </div>
-              </div>
+                  <div
+                    onClick={() => { setSelectedStatusFilter('ALL'); setApprovalHistoryFilter('MY_APPROVALS'); }}
+                    className="p-3.5 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 cursor-pointer hover:border-blue-300 transition"
+                  >
+                    <div className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase">
+                      Reviewed by Me
+                    </div>
+                    <div className="text-xl font-black text-blue-700 dark:text-blue-400">
+                      {displayMrns.filter((m) => m.niranjanApproval?.approved).length}
+                    </div>
+                  </div>
+                </>
+              ) : currentUser.role === 'management_vinod' ? (
+                <>
+                  <div
+                    onClick={() => { setSelectedStatusFilter('ALL'); setApprovalHistoryFilter('PENDING_ME'); }}
+                    className="p-3.5 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 cursor-pointer hover:border-purple-300 transition"
+                  >
+                    <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">
+                      Pending My Approval
+                    </div>
+                    <div className="text-xl font-black text-purple-700 dark:text-purple-400">
+                      {displayMrns.filter((m) => !m.vinodApproval?.approved && m.status !== 'REJECTED' && m.status !== 'ISSUED').length}
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => { setSelectedStatusFilter('ALL'); setApprovalHistoryFilter('MY_APPROVALS'); }}
+                    className="p-3.5 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 cursor-pointer hover:border-blue-300 transition"
+                  >
+                    <div className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase">
+                      Authorized by Me
+                    </div>
+                    <div className="text-xl font-black text-blue-700 dark:text-blue-400">
+                      {displayMrns.filter((m) => m.vinodApproval?.approved).length}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div
+                    onClick={() => setSelectedStatusFilter('PENDING_SUPERVISOR')}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition ${
+                      selectedStatusFilter === 'PENDING_SUPERVISOR'
+                        ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 shadow-sm'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase">Pending Supervisor</div>
+                    <div className="text-xl font-black text-amber-700 dark:text-amber-400">
+                      {displayMrns.filter((m) => m.status === 'PENDING_SUPERVISOR').length}
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setSelectedStatusFilter('PENDING_MANAGEMENT')}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition ${
+                      selectedStatusFilter === 'PENDING_MANAGEMENT'
+                        ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-sm'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase">
+                      Pending Mr. Niranjan / Mr. Vinod
+                    </div>
+                    <div className="text-xl font-black text-purple-700 dark:text-purple-400">
+                      {displayMrns.filter((m) => m.supervisorApproval?.approved && !m.vinodApproval?.approved && m.status !== 'ISSUED').length}
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div
                 onClick={() => setSelectedStatusFilter('ISSUED')}
@@ -797,7 +926,7 @@ export default function HomePage() {
               >
                 <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">Issued & Locked</div>
                 <div className="text-xl font-black text-emerald-700 dark:text-emerald-400">
-                  {mrns.filter((m) => m.isLocked || m.status === 'ISSUED' || m.status === 'PARTIALLY_ISSUED').length}
+                  {displayMrns.filter((m) => m.isLocked || m.status === 'ISSUED' || m.status === 'PARTIALLY_ISSUED').length}
                 </div>
               </div>
             </div>
@@ -826,7 +955,7 @@ export default function HomePage() {
                           Loading MRN records...
                         </td>
                       </tr>
-                    ) : mrns.length === 0 ? (
+                    ) : displayMrns.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="py-12 text-center text-slate-400">
                           <FileText className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
@@ -834,7 +963,7 @@ export default function HomePage() {
                         </td>
                       </tr>
                     ) : (
-                      mrns.map((m) => (
+                      displayMrns.map((m) => (
                         <tr
                           key={m._id}
                           onClick={() => setSelectedMRN(m)}
@@ -911,16 +1040,30 @@ export default function HomePage() {
         {/* Tab 2: Analytics & Reports */}
         {activeTab === 'analytics' && (
           <AnalyticsDashboard
-            mrns={allMrns.length > 0 ? allMrns : mrns}
+            mrns={allMrns.length > 0 ? allMrns : displayMrns}
+            currentUser={currentUser}
+            departments={departments}
             stats={stats}
             loading={loading}
             onRefresh={() => {
               fetchMRNs();
               fetchStats();
-              fetch('/api/mrn?limit=500')
+              const p = new URLSearchParams({ limit: '500' });
+              if (currentUser?.role) p.append('role', currentUser.role);
+              if (currentUser?.department) p.append('userDept', currentUser.department);
+              if (currentUser?.role === 'supervisor' && supervisorDepartments.length > 0) {
+                p.append('supervisorDepts', supervisorDepartments.join(','));
+              }
+              fetch(`/api/mrn?${p.toString()}`)
                 .then((r) => r.json())
                 .then((d) => {
-                  if (d.success) setAllMrns(d.mrns || []);
+                  if (d.success) {
+                    let list = d.mrns || [];
+                    if (currentUser?.role === 'management_niranjan' || currentUser?.role === 'management_vinod') {
+                      list = list.filter((m) => m.supervisorApproval?.approved === true);
+                    }
+                    setAllMrns(list);
+                  }
                 });
             }}
           />
