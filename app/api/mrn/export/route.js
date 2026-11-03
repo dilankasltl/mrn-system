@@ -3,6 +3,8 @@ import { connectToDatabase } from '@/lib/mongodb';
 import MRN from '@/models/MRN';
 import * as XLSX from 'xlsx';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req) {
   try {
     await connectToDatabase();

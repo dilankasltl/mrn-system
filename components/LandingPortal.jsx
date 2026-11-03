@@ -311,8 +311,8 @@ export default function LandingPortal({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Quick Track Input */}
-          <form onSubmit={handleTrackSubmit} className="hidden sm:flex items-center">
+          {/* Quick Track Input - Always accessible across all devices */}
+          <form onSubmit={handleTrackSubmit} className="flex items-center">
             <div className="relative">
               <input
                 type="text"
@@ -320,8 +320,8 @@ export default function LandingPortal({
                 value={trackInput}
                 onChange={(e) => { setTrackInput(e.target.value); setShowTrackSuggestions(true); }}
                 onFocus={() => setShowTrackSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowTrackSuggestions(false), 150)}
-                className="w-48 lg:w-64 text-xs bg-slate-800/80 text-slate-200 placeholder-slate-400 pl-8 pr-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-sky-500"
+                onBlur={() => setTimeout(() => setShowTrackSuggestions(false), 200)}
+                className="w-36 sm:w-48 lg:w-64 text-xs bg-slate-800/80 text-slate-200 placeholder-slate-400 pl-8 pr-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-sky-500 transition"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
               {/* Autocomplete Dropdown */}
@@ -390,6 +390,52 @@ export default function LandingPortal({
           <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto mt-1.5">
             Departments can raise material notes without a password. Authorized Supervisors, Mr. Niranjan, Mr. Vinod, and Stores sign in below.
           </p>
+        </div>
+
+        {/* Prominent Track Any MRN Box */}
+        <div className="max-w-xl mx-auto w-full mb-6">
+          <form onSubmit={handleTrackSubmit} className="relative flex items-center shadow-2xl rounded-2xl border border-slate-700 bg-slate-900/90 backdrop-blur-md p-1.5 focus-within:border-sky-500 transition">
+            <Search className="w-4 h-4 text-sky-400 ml-3 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Track any MRN # to check status (e.g. IT20261103001)..."
+              value={trackInput}
+              onChange={(e) => { setTrackInput(e.target.value); setShowTrackSuggestions(true); }}
+              onFocus={() => setShowTrackSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowTrackSuggestions(false), 200)}
+              className="flex-1 bg-transparent text-xs text-white placeholder-slate-400 px-3 py-2 focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-95"
+            >
+              Track Status
+            </button>
+            {/* Autocomplete Suggestions */}
+            {showTrackSuggestions && trackSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-800">
+                {trackSuggestions.map((m) => (
+                  <button
+                    key={m._id}
+                    type="button"
+                    onMouseDown={() => { setTrackInput(m.mrnNo); setShowTrackSuggestions(false); onSearchMRN(m.mrnNo); }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-slate-800 transition flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div>
+                      <span className="font-bold text-sky-400 font-mono">{m.mrnNo}</span>
+                      <span className="text-[11px] text-slate-400 ml-2">{m.department} ({m.requestedBy})</span>
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                      m.status === 'ISSUED' ? 'bg-emerald-900/60 text-emerald-300' :
+                      m.status === 'PENDING_SUPERVISOR' ? 'bg-amber-900/60 text-amber-300' :
+                      m.status === 'APPROVED' ? 'bg-blue-900/60 text-blue-300' :
+                      'bg-slate-800 text-slate-300'
+                    }`}>{m.status?.replace(/_/g, ' ')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </form>
         </div>
 
         {/* Portal Mode Tabs */}

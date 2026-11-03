@@ -3,6 +3,8 @@ import { connectToDatabase } from '@/lib/mongodb';
 import MRN from '@/models/MRN';
 import { generateUniqueMRNNo } from '@/lib/generateMrnNo';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req) {
   try {
     await connectToDatabase();
@@ -20,23 +22,63 @@ export async function GET(req) {
 
     const andConditions = [];
 
-    // Department isolation
+    // Check if user is searching specifically by an MRN number pattern
+    const isSpecificMRNSearch = Boolean(search && search.trim() && /^[A-Za-z0-9_-]{3,}$/.test(search.trim()));
+
+    // Department isolation:
+    // Allow tracking any MRN status plant-wide if searching specifically by MRN code
     if (role === 'department') {
       const lockedDept = userDept || department;
       if (lockedDept && lockedDept !== 'ALL') {
-        andConditions.push({ department: lockedDept });
+        if (isSpecificMRNSearch) {
+          andConditions.push({
+            $or: [
+              { department: lockedDept },
+              { mrnNo: { $regex: new RegExp(search.trim(), 'i') } },
+            ],
+          });
+        } else {
+          andConditions.push({ department: lockedDept });
+        }
       }
     } else if (role === 'supervisor') {
       const supervisorDepts = searchParams.get('supervisorDepts');
       if (department && department !== 'ALL') {
-        andConditions.push({ department });
+        if (isSpecificMRNSearch) {
+          andConditions.push({
+            $or: [
+              { department },
+              { mrnNo: { $regex: new RegExp(search.trim(), 'i') } },
+            ],
+          });
+        } else {
+          andConditions.push({ department });
+        }
       } else if (supervisorDepts) {
         const depts = supervisorDepts.split(',').map((s) => s.trim()).filter(Boolean);
         if (depts.length > 0) {
-          andConditions.push({ department: { $in: depts } });
+          if (isSpecificMRNSearch) {
+            andConditions.push({
+              $or: [
+                { department: { $in: depts } },
+                { mrnNo: { $regex: new RegExp(search.trim(), 'i') } },
+              ],
+            });
+          } else {
+            andConditions.push({ department: { $in: depts } });
+          }
         }
       } else if (userDept && userDept !== 'ALL') {
-        andConditions.push({ department: userDept });
+        if (isSpecificMRNSearch) {
+          andConditions.push({
+            $or: [
+              { department: userDept },
+              { mrnNo: { $regex: new RegExp(search.trim(), 'i') } },
+            ],
+          });
+        } else {
+          andConditions.push({ department: userDept });
+        }
       }
     } else {
       if (department && department !== 'ALL') {

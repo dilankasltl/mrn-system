@@ -1,15 +1,39 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import MRN from '@/models/MRN';
+import mongoose from 'mongoose';
+
+async function findMRNByIdOrNo(id) {
+  if (!id) return null;
+  const cleanId = decodeURIComponent(id).trim();
+
+  // 1. Exact match on mrnNo (case-insensitive) - Plant-wide tracking
+  let mrn = await MRN.findOne({
+    mrnNo: { $regex: new RegExp(`^${cleanId}$`, 'i') },
+  });
+  if (mrn) return mrn;
+
+  // 2. Exact match on MongoDB ObjectId (if valid 24-hex string)
+  if (mongoose.Types.ObjectId.isValid(cleanId)) {
+    mrn = await MRN.findById(cleanId);
+    if (mrn) return mrn;
+  }
+
+  // 3. Partial match on mrnNo (e.g. user typed partial code)
+  mrn = await MRN.findOne({
+    mrnNo: { $regex: new RegExp(cleanId, 'i') },
+  });
+  return mrn;
+}
 
 export async function GET(req, { params }) {
   try {
     await connectToDatabase();
     const { id } = params;
-    let mrn;
-    if (id.startsWith('MRN-')) { mrn = await MRN.findOne({ mrnNo: id }).lean(); }
-    else { mrn = await MRN.findById(id).lean(); }
-    if (!mrn) return NextResponse.json({ success: false, error: 'MRN not found' }, { status: 404 });
+    const mrn = await findMRNByIdOrNo(id);
+    if (!mrn) {
+      return NextResponse.json({ success: false, error: `MRN '${id}' not found.` }, { status: 404 });
+    }
     return NextResponse.json({ success: true, mrn });
   } catch (error) {
     console.error('Fetch single MRN error:', error);
@@ -23,7 +47,7 @@ export async function PUT(req, { params }) {
     const { id } = params;
     const body = await req.json();
     const { role, items, generalRemarks, shift } = body;
-    const mrn = await MRN.findById(id);
+    const mrn = await findMRNByIdOrNo(id);
     if (!mrn) return NextResponse.json({ success: false, error: 'MRN not found' }, { status: 404 });
     if (mrn.isLocked || mrn.status === 'ISSUED') {
       if (role !== 'admin') return NextResponse.json({ success: false, error: 'This MRN is already issued and locked. Only Admin can modify it.' }, { status: 403 });
@@ -50,12 +74,12 @@ export async function DELETE(req, { params }) {
     const { id } = params;
     const { searchParams } = new URL(req.url);
     const role = searchParams.get('role');
-    const mrn = await MRN.findById(id);
+    const mrn = await findMRNByIdOrNo(id);
     if (!mrn) return NextResponse.json({ success: false, error: 'MRN not found' }, { status: 404 });
     if ((mrn.isLocked || mrn.status === 'ISSUED') && role !== 'admin') {
       return NextResponse.json({ success: false, error: 'Issued MRNs cannot be deleted. Admin authorization is required.' }, { status: 403 });
     }
-    await MRN.findByIdAndDelete(id);
+    await MRN.findByIdAndDelete(mrn._id);
     return NextResponse.json({ success: true, message: `MRN ${mrn.mrnNo} deleted successfully` });
   } catch (error) {
     console.error('Delete MRN error:', error);

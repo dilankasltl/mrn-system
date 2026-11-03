@@ -293,10 +293,12 @@ export default function HomePage() {
   // Fetch all MRNs for track search suggestions and analytics
   useEffect(() => {
     const allMrnsParams = new URLSearchParams({ limit: '500' });
-    if (currentUser?.role) allMrnsParams.append('role', currentUser.role);
-    if (currentUser?.department) allMrnsParams.append('userDept', currentUser.department);
-    if (currentUser?.role === 'supervisor' && supervisorDeptKey) {
-      allMrnsParams.append('supervisorDepts', supervisorDeptKey);
+    if (currentUser?.isAuthenticated) {
+      if (currentUser?.role) allMrnsParams.append('role', currentUser.role);
+      if (currentUser?.department) allMrnsParams.append('userDept', currentUser.department);
+      if (currentUser?.role === 'supervisor' && supervisorDeptKey) {
+        allMrnsParams.append('supervisorDepts', supervisorDeptKey);
+      }
     }
     fetch(`/api/mrn?${allMrnsParams.toString()}`)
       .then((res) => res.json())
@@ -310,7 +312,7 @@ export default function HomePage() {
         }
       })
       .catch((e) => console.error('All MRNs fetch error', e));
-  }, [currentUser?.role, currentUser?.department, supervisorDeptKey]);
+  }, [currentUser?.isAuthenticated, currentUser?.role, currentUser?.department, supervisorDeptKey]);
 
   // Real-Time Live Polling for Notifications & Bell Count (every 15s)
   useEffect(() => {
@@ -410,22 +412,26 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [currentUser?.id, currentUser?.role, currentUser?.department, currentUser?.isAuthenticated, supervisorDeptKey, fetchMRNs, fetchStats]);
 
-  // Handle Search for single MRN
+  // Handle Search for single MRN - Plant-wide tracking across all departments
   const handleSearchMRN = async (mrnNo) => {
+    if (!mrnNo || !mrnNo.trim()) return;
+    const cleanNo = mrnNo.trim();
     setLoading(true);
     try {
-      const res = await fetch(`/api/mrn/${mrnNo}`);
+      const res = await fetch(`/api/mrn/${encodeURIComponent(cleanNo)}`);
       const data = await res.json();
       if (data.success && data.mrn) {
         setSelectedMRN(data.mrn);
         setViewMode('dashboard');
       } else {
-        setSearchQuery(mrnNo);
+        setSelectedDeptFilter('ALL');
+        setSearchQuery(cleanNo);
         setViewMode('dashboard');
         fetchMRNs();
       }
     } catch (err) {
-      setSearchQuery(mrnNo);
+      setSelectedDeptFilter('ALL');
+      setSearchQuery(cleanNo);
       setViewMode('dashboard');
       fetchMRNs();
     } finally {

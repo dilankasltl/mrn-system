@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import MRN from '@/models/MRN';
+import mongoose from 'mongoose';
+
+async function findMRN(id) {
+  if (!id) return null;
+  const cleanId = decodeURIComponent(id).trim();
+  if (mongoose.Types.ObjectId.isValid(cleanId)) {
+    const doc = await MRN.findById(cleanId);
+    if (doc) return doc;
+  }
+  return await MRN.findOne({ mrnNo: { $regex: new RegExp(`^${cleanId}$`, 'i') } });
+}
 
 export async function POST(req, { params }) {
   try {
@@ -8,7 +19,7 @@ export async function POST(req, { params }) {
     const { id } = params;
     const body = await req.json();
     const { approvalType, approvedBy, comments } = body;
-    const mrn = await MRN.findById(id);
+    const mrn = await findMRN(id);
     if (!mrn) return NextResponse.json({ success: false, error: 'MRN not found' }, { status: 404 });
     if (mrn.isLocked || mrn.status === 'ISSUED') return NextResponse.json({ success: false, error: 'Cannot modify approval: MRN is already issued and locked.' }, { status: 400 });
     const now = new Date();
