@@ -84,9 +84,20 @@ export default function Navbar({
     if (!mrns || mrns.length === 0) return [];
 
     if (currentUser.role === 'supervisor') {
+      const supName = currentUser.name?.toLowerCase().trim();
+      const supDepts = (departments || [])
+        .filter((d) =>
+          (d.supervisors || []).some((s) => {
+            const sName = s.name?.toLowerCase().trim();
+            return sName && (sName === supName || sName.includes(supName) || supName.includes(sName));
+          })
+        )
+        .map((d) => d.name);
+      const authorizedDepts = supDepts.length > 0 ? supDepts : [currentUser.department];
+
       return mrns.filter(
         (m) =>
-          m.department === currentUser.department &&
+          authorizedDepts.includes(m.department) &&
           !m.supervisorApproval?.approved &&
           m.status === 'PENDING_SUPERVISOR'
       );

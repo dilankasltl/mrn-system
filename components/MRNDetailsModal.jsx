@@ -23,6 +23,7 @@ export default function MRNDetailsModal({
   isOpen,
   onClose,
   currentUser,
+  departments = [],
   onMRNUpdated,
   onMRNDeleted,
   onOpenLogin,
@@ -67,6 +68,37 @@ export default function MRNDetailsModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Synchronize modal state whenever mrn changes
+  React.useEffect(() => {
+    if (!mrn) return;
+    setStoreItems(
+      (mrn.items || []).map((it) => ({
+        _id: it._id,
+        itemNo: it.itemNo,
+        description: it.description,
+        requestQty: it.requestQty,
+        unit: it.unit || 'Nos',
+        issueQty: it.issueQty !== undefined && it.issueQty > 0 ? it.issueQty : it.requestQty,
+        remarks: it.remarks || '',
+        isIssued: it.isIssued || false,
+      }))
+    );
+    setSupervisorItems(
+      (mrn.items || []).map((it) => ({
+        _id: it._id,
+        itemNo: it.itemNo,
+        description: it.description,
+        requestQty: it.requestQty,
+        unit: it.unit || 'Nos',
+        remarks: it.remarks || '',
+      }))
+    );
+    setStoresRemarks(mrn.storesIssue?.storesRemarks || '');
+    setApprovalComments('');
+    setError('');
+    setSuccess('');
+  }, [mrn?._id, mrn?.status]);
 
   // Handle Stores Qty Change
   const handleStoreQtyChange = (index, val) => {
@@ -198,12 +230,29 @@ export default function MRNDetailsModal({
   const niranjanApproved = mrn.niranjanApproval?.approved;
   const vinodApproved = mrn.vinodApproval?.approved;
 
+  // Check if supervisor is authorized for this department:
+  const isAuthorizedSupervisor = () => {
+    if (currentUser?.role !== 'supervisor') return false;
+    // Direct match with user's primary department
+    if (currentUser.department && currentUser.department === mrn.department) return true;
+    
+    // Match via departments configuration (e.g. Mr. Ravimal / Mr. Dhammika for Shift A, B, C, Production, etc.)
+    const supName = currentUser.name?.toLowerCase().trim();
+    const deptObj = (departments || []).find((d) => d.name === mrn.department);
+    if (deptObj && deptObj.supervisors) {
+      return deptObj.supervisors.some((s) => {
+        const sName = s.name?.toLowerCase().trim();
+        return sName && (sName === supName || sName.includes(supName) || supName.includes(sName));
+      });
+    }
+    return false;
+  };
+
   // Can this user perform supervisor approval?
   const canApproveAsSupervisor =
     !isIssued &&
     !supervisorApproved &&
-    (currentUser.role === 'admin' ||
-      (currentUser.role === 'supervisor' && currentUser.department === mrn.department));
+    (currentUser.role === 'admin' || isAuthorizedSupervisor());
 
   const canApproveAsNiranjan =
     !isIssued &&

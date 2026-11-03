@@ -29,6 +29,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { exportMRNsToExcel } from '@/lib/exportExcel';
+import { INITIAL_DEPARTMENTS } from '@/lib/seedData';
 import {
   playNotificationSound,
   requestNotificationPermission,
@@ -73,7 +74,7 @@ export default function HomePage() {
     return 'portal';
   });
 
-  const [departments, setDepartments] = useState([]);
+  const [departments, setDepartments] = useState(INITIAL_DEPARTMENTS);
   const [mrns, setMrns] = useState([]);
   const [allMrns, setAllMrns] = useState([]); // unrestricted list for track search suggestions
   const [loading, setLoading] = useState(true);
@@ -180,10 +181,22 @@ export default function HomePage() {
       } else if (isSupervisor) {
         if (selectedDeptFilter && selectedDeptFilter !== 'ALL') {
           params.append('department', selectedDeptFilter);
-        } else if (supervisorDepartments.length > 0) {
-          params.append('supervisorDepts', supervisorDepartments.join(','));
-        } else if (activeUser.department) {
-          params.append('department', activeUser.department);
+        } else {
+          const supName = activeUser.name?.toLowerCase().trim();
+          const matched = (departments || [])
+            .filter((d) =>
+              (d.supervisors || []).some((s) => {
+                const sName = s.name?.toLowerCase().trim();
+                return sName && (sName === supName || sName.includes(supName) || supName.includes(sName));
+              })
+            )
+            .map((d) => d.name);
+          const depts = matched.length > 0 ? matched : (activeUser.department ? [activeUser.department] : []);
+          if (depts.length > 0) {
+            params.append('supervisorDepts', depts.join(','));
+          } else if (activeUser.department) {
+            params.append('department', activeUser.department);
+          }
         }
       } else {
         params.append('department', activeUser.department || 'Production');
@@ -437,11 +450,7 @@ export default function HomePage() {
   // Handle successful login
   const handleLoginSuccess = (loggedUser) => {
     setCurrentUser(loggedUser);
-    if (loggedUser.role === 'supervisor' && loggedUser.department) {
-      setSelectedDeptFilter(loggedUser.department);
-    } else {
-      setSelectedDeptFilter('ALL');
-    }
+    setSelectedDeptFilter('ALL');
     setViewMode('dashboard');
     fetchMRNs(loggedUser);
     fetchStats();
@@ -548,7 +557,7 @@ export default function HomePage() {
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onLogout={handleLogout}
         onExitToPortal={() => setViewMode('portal')}
-        mrns={allMrns}
+        mrns={allMrns.length > 0 ? allMrns : mrns}
         onSelectMRN={(m) => setSelectedMRN(m)}
       />
 
@@ -1105,6 +1114,7 @@ export default function HomePage() {
         isOpen={Boolean(selectedMRN)}
         onClose={() => setSelectedMRN(null)}
         currentUser={currentUser}
+        departments={departments}
         onMRNUpdated={(updatedMRN) => {
           setSelectedMRN(updatedMRN);
           setMrns(mrns.map((m) => (m._id === updatedMRN._id ? updatedMRN : m)));
