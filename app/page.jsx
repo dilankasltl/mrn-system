@@ -149,7 +149,9 @@ export default function HomePage() {
       .map((d) => d.name);
     if (matched.length > 0) return Array.from(new Set(matched)).sort();
     return currentUser?.department ? [currentUser.department] : [];
-  }, [currentUser, departments]);
+  }, [currentUser?.role, currentUser?.name, currentUser?.department, departments]);
+
+  const supervisorDeptKey = useMemo(() => supervisorDepartments.join(','), [supervisorDepartments]);
 
   // Safeguarded MRNs list for active view:
   // Management View Isolation: Mr. Niranjan and Mr. Vinod ONLY see supervisor-approved MRNs
@@ -240,12 +242,14 @@ export default function HomePage() {
     selectedDeptFilter,
     selectedStatusFilter,
     searchQuery,
-    currentUser,
+    currentUser.role,
+    currentUser.department,
+    currentUser.name,
     dateFilter,
     customStartDate,
     customEndDate,
     approvalHistoryFilter,
-    supervisorDepartments,
+    supervisorDeptKey,
   ]);
 
   // Fetch Stats
@@ -261,18 +265,25 @@ export default function HomePage() {
     }
   }, []);
 
-  // Initialize Data
+  // Initial Data on Mount (runs once)
   useEffect(() => {
     fetchDepartments();
     fetchStats();
-    fetchMRNs();
+    fetch('/api/init').catch((e) => console.error('Init error', e));
+  }, [fetchDepartments, fetchStats]);
 
-    // Fetch all MRNs for track search suggestions and analytics
+  // Fetch MRNs on filter / criteria change
+  useEffect(() => {
+    fetchMRNs();
+  }, [fetchMRNs]);
+
+  // Fetch all MRNs for track search suggestions and analytics
+  useEffect(() => {
     const allMrnsParams = new URLSearchParams({ limit: '500' });
     if (currentUser?.role) allMrnsParams.append('role', currentUser.role);
     if (currentUser?.department) allMrnsParams.append('userDept', currentUser.department);
-    if (currentUser?.role === 'supervisor' && supervisorDepartments.length > 0) {
-      allMrnsParams.append('supervisorDepts', supervisorDepartments.join(','));
+    if (currentUser?.role === 'supervisor' && supervisorDeptKey) {
+      allMrnsParams.append('supervisorDepts', supervisorDeptKey);
     }
     fetch(`/api/mrn?${allMrnsParams.toString()}`)
       .then((res) => res.json())
@@ -286,21 +297,7 @@ export default function HomePage() {
         }
       })
       .catch((e) => console.error('All MRNs fetch error', e));
-
-    // Background init
-    fetch('/api/init').catch((e) => console.error('Init error', e));
-  }, [
-    selectedDeptFilter,
-    selectedStatusFilter,
-    searchQuery,
-    dateFilter,
-    customStartDate,
-    customEndDate,
-    approvalHistoryFilter,
-    currentUser.role,
-    currentUser.department,
-    supervisorDepartments,
-  ]);
+  }, [currentUser?.role, currentUser?.department, supervisorDeptKey]);
 
   // Real-Time Live Polling for Notifications & Bell Count (every 15s)
   useEffect(() => {
@@ -382,8 +379,7 @@ export default function HomePage() {
               () => setSelectedMRN(newest)
             );
 
-            // Update live data silently
-            setAllMrns(currentMrns);
+            // Update live data silently only when new action arrives
             fetchMRNs();
             fetchStats();
           }
@@ -392,7 +388,6 @@ export default function HomePage() {
         }
 
         lastKnownPendingIds.current = pendingIds;
-        setAllMrns(currentMrns);
       } catch (err) {
         // silent polling catch
       }
@@ -400,7 +395,7 @@ export default function HomePage() {
 
     const interval = setInterval(checkNewNotifications, 15000);
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [currentUser?.id, currentUser?.role, currentUser?.department, currentUser?.isAuthenticated, supervisorDeptKey, fetchMRNs, fetchStats]);
 
   // Handle Search for single MRN
   const handleSearchMRN = async (mrnNo) => {

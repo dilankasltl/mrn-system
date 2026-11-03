@@ -64,12 +64,14 @@ export default function AnalyticsDashboard({
         )
         .map((d) => d.name);
 
-      if (matched.length > 0) return matched;
+      if (matched.length > 0) return Array.from(new Set(matched)).sort();
       return currentUser?.department ? [currentUser.department] : [];
     }
     // Department role
     return currentUser?.department ? [currentUser.department] : [];
-  }, [currentUser, departments, isGlobalRole, isSupervisor]);
+  }, [currentUser?.name, currentUser?.department, departments, isGlobalRole, isSupervisor]);
+
+  const authorizedDeptKey = useMemo(() => authorizedDepartments.join(','), [authorizedDepartments]);
 
   // Initial department state
   const [selectedDept, setSelectedDept] = useState(() => {
@@ -85,7 +87,7 @@ export default function AnalyticsDashboard({
     } else if (isSupervisor && authorizedDepartments.length === 1) {
       setSelectedDept(authorizedDepartments[0]);
     }
-  }, [currentUser, isDepartmentRole, isSupervisor, authorizedDepartments]);
+  }, [currentUser?.department, isDepartmentRole, isSupervisor, authorizedDeptKey]);
 
   // Date filter states: 'all' | 'today' | 'yesterday' | 'this_month' | 'last_month' | 'custom'
   const [datePreset, setDatePreset] = useState('all');
