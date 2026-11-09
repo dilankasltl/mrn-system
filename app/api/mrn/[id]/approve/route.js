@@ -26,8 +26,14 @@ export async function POST(req, { params }) {
     if (approvalType === 'supervisor') {
       if (body.items && Array.isArray(body.items)) {
         mrn.items = body.items.filter((it) => it.description && it.description.trim() !== '').map((it, idx) => ({
-          itemNo: idx + 1, description: it.description.trim(), requestQty: Number(it.requestQty) || 0,
-          unit: it.unit ? it.unit.trim() : 'Nos', issueQty: it.issueQty || 0, remarks: it.remarks ? it.remarks.trim() : '', isIssued: false,
+          itemNo: idx + 1,
+          itemCode: it.itemCode ? it.itemCode.trim() : (mrn.items[idx]?.itemCode || ''),
+          description: it.description.trim(),
+          requestQty: Number(it.requestQty) || 0,
+          unit: it.unit ? it.unit.trim().toUpperCase() : 'Nos',
+          issueQty: it.issueQty || 0,
+          remarks: it.remarks ? it.remarks.trim() : '',
+          isIssued: false,
         }));
       }
       mrn.supervisorApproval = { approved: true, approvedBy: approvedBy || 'Supervisor', approvedAt: now, comments: comments || '' };
