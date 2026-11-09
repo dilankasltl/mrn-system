@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import MRN from '@/models/MRN';
 import mongoose from 'mongoose';
+import { sendSupervisorApprovalNotification } from '@/lib/email';
 
 async function findMRN(id) {
   if (!id) return null;
@@ -38,6 +39,11 @@ export async function POST(req, { params }) {
       }
       mrn.supervisorApproval = { approved: true, approvedBy: approvedBy || 'Supervisor', approvedAt: now, comments: comments || '' };
       mrn.status = 'SUPERVISOR_APPROVED';
+      // Automated background email notification to Mr. Niranjan
+      sendSupervisorApprovalNotification({
+        mrn,
+        supervisorName: approvedBy || 'Supervisor',
+      }).catch((err) => console.error('Automated email send failed:', err));
     } else if (approvalType === 'niranjan') {
       if (!mrn.supervisorApproval?.approved) return NextResponse.json({ success: false, error: 'Supervisor approval must be completed first.' }, { status: 400 });
       mrn.niranjanApproval = { approved: true, approvedBy: approvedBy || 'Mr. Niranjan', approvedAt: now, comments: comments || '' };
