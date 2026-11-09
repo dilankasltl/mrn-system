@@ -156,14 +156,28 @@ export default function HomePage() {
   const supervisorDeptKey = useMemo(() => supervisorDepartments.join(','), [supervisorDepartments]);
 
   // Safeguarded MRNs list for active view:
-  // Management View Isolation: Mr. Niranjan and Mr. Vinod ONLY see supervisor-approved MRNs
+  // Strict Department Isolation: Department users CAN ONLY see their own department's MRNs in the list!
   const displayMrns = useMemo(() => {
     let list = mrns;
-    if (currentUser?.role === 'management_niranjan' || currentUser?.role === 'management_vinod') {
+
+    if (currentUser?.role === 'department') {
+      const activeDept = currentUser.department;
+      if (activeDept && activeDept !== 'ALL') {
+        list = list.filter(
+          (m) => m.department && m.department.toLowerCase().trim() === activeDept.toLowerCase().trim()
+        );
+      }
+    } else if (currentUser?.role === 'management_niranjan' || currentUser?.role === 'management_vinod') {
       list = list.filter((m) => m.supervisorApproval?.approved === true);
+    } else if (currentUser?.role === 'supervisor') {
+      if (selectedDeptFilter && selectedDeptFilter !== 'ALL') {
+        list = list.filter((m) => m.department === selectedDeptFilter);
+      } else if (supervisorDepartments.length > 0) {
+        list = list.filter((m) => supervisorDepartments.includes(m.department));
+      }
     }
     return list;
-  }, [mrns, currentUser?.role]);
+  }, [mrns, currentUser?.role, currentUser?.department, supervisorDepartments, selectedDeptFilter]);
 
   // Fetch MRNs
   const fetchMRNs = useCallback(async (userOverride = null) => {
@@ -423,18 +437,11 @@ export default function HomePage() {
       const data = await res.json();
       if (data.success && data.mrn) {
         setSelectedMRN(data.mrn);
-        setViewMode('dashboard');
       } else {
-        setSelectedDeptFilter('ALL');
-        setSearchQuery(cleanNo);
-        setViewMode('dashboard');
-        fetchMRNs();
+        alert(`MRN "${cleanNo}" not found in the system.`);
       }
     } catch (err) {
-      setSelectedDeptFilter('ALL');
-      setSearchQuery(cleanNo);
-      setViewMode('dashboard');
-      fetchMRNs();
+      alert(`Could not track MRN: ${err.message || 'Error occurred'}`);
     } finally {
       setLoading(false);
     }
@@ -451,7 +458,11 @@ export default function HomePage() {
     };
     setCurrentUser(deptUser);
     setSelectedDeptFilter(deptName);
+    setSearchQuery('');
+    setSelectedStatusFilter('ALL');
+    setDateFilter('ALL');
     setViewMode('dashboard');
+    fetchMRNs(deptUser);
   };
 
   // Handle successful login
