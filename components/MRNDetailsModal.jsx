@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CheckCircle,
   Clock,
@@ -16,6 +16,7 @@ import {
   LogIn,
   Plus,
   Trash,
+  Package,
 } from 'lucide-react';
 import seedItems from '@/lib/seedItems.json';
 
@@ -56,6 +57,13 @@ export default function MRNDetailsModal({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Autocomplete search state for Supervisor Review & Edit
+  const [activeDropdown, setActiveDropdown] = useState(null); // { rowIndex: number, field: 'itemCode' | 'description' }
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 460 });
+  const searchTimerRef = useRef(null);
+
   // Synchronize modal state whenever mrn changes
   useEffect(() => {
     if (!mrn) return;
@@ -93,20 +101,114 @@ export default function MRNDetailsModal({
     setApprovalComments('');
     setError('');
     setSuccess('');
+    setActiveDropdown(null);
+    setSearchResults([]);
   }, [mrn?._id, mrn?.status, currentUser]);
 
-  // Global keydown listener for Escape to close
+  // Global click & Escape listener
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
+    const handleGlobalClick = (e) => {
+      if (
+        !e.target.closest('#supervisor-catalog-autocomplete-dropdown') &&
+        !e.target.closest('[data-supervisor-autocomplete="true"]')
+      ) {
+        setActiveDropdown(null);
       }
     };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (activeDropdown) {
+          setActiveDropdown(null);
+        } else if (isOpen) {
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('mousedown', handleGlobalClick);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+    return () => {
+      window.removeEventListener('mousedown', handleGlobalClick);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose, activeDropdown]);
 
   if (!isOpen || !mrn) return null;
+
+  // Autocomplete positioning & search handlers
+  const updateDropdownPosition = (targetElement) => {
+    if (!targetElement) return;
+    const rect = targetElement.getBoundingClientRect();
+    const dropdownWidth = Math.max(rect.width, 460);
+    const maxLeft = window.innerWidth - dropdownWidth - 16;
+    const left = Math.max(16, Math.min(rect.left, maxLeft));
+
+    const estimatedHeight = 300;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpwards = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
+
+    const top = openUpwards ? Math.max(10, rect.top - estimatedHeight - 4) : rect.bottom + 6;
+
+    setDropdownPos({
+      top,
+      left,
+      width: dropdownWidth,
+    });
+  };
+
+  const triggerCatalogSearch = (text, rowIndex, field, targetElement) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!text || text.trim().length === 0) {
+      setActiveDropdown(null);
+      setSearchResults([]);
+      return;
+    }
+
+    if (targetElement) {
+      updateDropdownPosition(targetElement);
+    }
+
+    setActiveDropdown({ rowIndex, field });
+    setSearchLoading(true);
+
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/items?search=${encodeURIComponent(text.trim())}&limit=15`);
+        const data = await res.json();
+        if (data.success) {
+          setSearchResults(data.items || []);
+        }
+      } catch (err) {
+        console.error('Error fetching catalog search:', err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 200);
+  };
+
+  const handleSupervisorItemChange = (index, field, value, targetElement) => {
+    const updated = [...supervisorItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setSupervisorItems(updated);
+
+    if (field === 'itemCode' || field === 'description') {
+      triggerCatalogSearch(value, index, field, targetElement);
+    }
+  };
+
+  const handleSupervisorSelectItem = (rowIndex, selectedItem) => {
+    const updated = [...supervisorItems];
+    updated[rowIndex] = {
+      ...updated[rowIndex],
+      itemCode: selectedItem.itemNo || '',
+      description: selectedItem.description || '',
+      unit: selectedItem.uom ? selectedItem.uom.toUpperCase() : 'NOS',
+    };
+    setSupervisorItems(updated);
+    setActiveDropdown(null);
+    setSearchResults([]);
+  };
 
   // Handle Stores Qty Change
   const handleStoreQtyChange = (index, val) => {
@@ -288,7 +390,7 @@ export default function MRNDetailsModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden print:p-0 print:bg-white animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-5xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 my-auto print:shadow-none print:border-none transition-colors duration-200 flex flex-col max-h-[94vh] overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-5xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 my-auto print:shadow-none print:border-none transition-colors duration-200 flex flex-col max-h-[94vh] overflow-hidden relative">
         {/* Sticky Header with Unmissable Close Buttons */}
         <div className="sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-30 px-5 sm:px-7 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
@@ -667,7 +769,7 @@ export default function MRNDetailsModal({
               </div>
             )}
 
-            {/* 1. Supervisor Approval Action - WITH EDITABLE ITEMS & ITEM NO */}
+            {/* 1. Supervisor Approval Action - WITH EDITABLE ITEMS & AUTOCOMPLETE */}
             {canApproveAsSupervisor && (
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl">
                 <div className="flex items-center gap-2 mb-3">
@@ -683,8 +785,8 @@ export default function MRNDetailsModal({
                       <thead className="bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 font-semibold">
                         <tr>
                           <th className="py-2 px-2 w-8 text-center">#</th>
-                          <th className="py-2 px-2 w-32">Item No. / Code</th>
-                          <th className="py-2 px-2">Description</th>
+                          <th className="py-2 px-2 w-36">Item No. / Code</th>
+                          <th className="py-2 px-2">Description (Search or Type)</th>
                           <th className="py-2 px-2 w-20">Qty</th>
                           <th className="py-2 px-2 w-20">Unit</th>
                           <th className="py-2 px-2 w-8"></th>
@@ -697,25 +799,34 @@ export default function MRNDetailsModal({
                             <td className="py-1.5 px-1">
                               <input
                                 type="text"
+                                data-supervisor-autocomplete="true"
                                 placeholder="Item Code"
                                 value={item.itemCode || ''}
-                                onChange={(e) => {
-                                  const updated = [...supervisorItems];
-                                  updated[idx].itemCode = e.target.value;
-                                  setSupervisorItems(updated);
+                                onFocus={(e) => {
+                                  if (item.itemCode && String(item.itemCode).trim().length >= 1) {
+                                    triggerCatalogSearch(item.itemCode, idx, 'itemCode', e.target);
+                                  }
                                 }}
+                                onChange={(e) =>
+                                  handleSupervisorItemChange(idx, 'itemCode', e.target.value, e.target)
+                                }
                                 className="w-full text-xs font-mono font-bold p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none uppercase"
                               />
                             </td>
                             <td className="py-1.5 px-1">
                               <input
                                 type="text"
+                                data-supervisor-autocomplete="true"
+                                placeholder="Search catalog or type description"
                                 value={item.description}
-                                onChange={(e) => {
-                                  const updated = [...supervisorItems];
-                                  updated[idx].description = e.target.value;
-                                  setSupervisorItems(updated);
+                                onFocus={(e) => {
+                                  if (item.description && item.description.trim().length >= 1) {
+                                    triggerCatalogSearch(item.description, idx, 'description', e.target);
+                                  }
                                 }}
+                                onChange={(e) =>
+                                  handleSupervisorItemChange(idx, 'description', e.target.value, e.target)
+                                }
                                 className="w-full text-xs p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none"
                               />
                             </td>
@@ -730,7 +841,7 @@ export default function MRNDetailsModal({
                                   updated[idx].requestQty = Number(e.target.value) || 0;
                                   setSupervisorItems(updated);
                                 }}
-                                className="w-full text-xs p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none text-center"
+                                className="w-full text-xs p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none text-center font-bold"
                               />
                             </td>
                             <td className="py-1.5 px-1">
@@ -742,7 +853,7 @@ export default function MRNDetailsModal({
                                   updated[idx].unit = e.target.value;
                                   setSupervisorItems(updated);
                                 }}
-                                className="w-full text-xs p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none uppercase text-center"
+                                className="w-full text-xs p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none uppercase text-center font-mono font-bold"
                               />
                             </td>
                             <td className="py-1.5 px-1 text-center">
@@ -944,6 +1055,73 @@ export default function MRNDetailsModal({
             <span>Close Window</span>
           </button>
         </div>
+
+        {/* Floating Supervisor Catalog Autocomplete Dropdown */}
+        {activeDropdown && (
+          <div
+            id="supervisor-catalog-autocomplete-dropdown"
+            style={{
+              position: 'fixed',
+              top: `${dropdownPos.top}px`,
+              left: `${dropdownPos.left}px`,
+              width: `${dropdownPos.width}px`,
+              zIndex: 99999,
+            }}
+            className="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-2xl shadow-2xl p-2.5 animate-in fade-in duration-150 backdrop-blur-md"
+          >
+            <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400 px-2 py-1 flex items-center justify-between border-b border-amber-100 dark:border-amber-900/40">
+              <span className="flex items-center gap-1.5">
+                <Package className="w-3.5 h-3.5 text-amber-600" />
+                <span>Catalog Items ({searchResults.length})</span>
+              </span>
+              {searchLoading ? (
+                <span className="flex items-center gap-1 text-[10px] text-amber-600">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Searching...
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-400 font-normal">Click to auto-fill</span>
+              )}
+            </div>
+
+            <div className="max-h-64 sm:max-h-72 overflow-y-auto space-y-1.5 mt-2 pr-1 divide-y divide-slate-100 dark:divide-slate-800/60">
+              {searchResults.length === 0 && !searchLoading ? (
+                <div className="text-xs text-slate-400 p-4 text-center">
+                  <p className="font-semibold text-slate-600 dark:text-slate-300">No catalog match found</p>
+                  <p className="text-[11px] mt-1 text-slate-400">
+                    Not in catalog? You can freely type custom item details.
+                  </p>
+                </div>
+              ) : (
+                searchResults.map((item, sIdx) => (
+                  <div
+                    key={sIdx}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleSupervisorSelectItem(activeDropdown.rowIndex, item);
+                    }}
+                    className="pt-2 pb-1 px-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer transition text-left group"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800/60">
+                        {item.itemNo}
+                      </span>
+                      <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                        UoM: {item.uom || 'NOS'}
+                      </span>
+                    </div>
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-snug mt-1.5 break-words">
+                      {item.description}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 text-center">
+              Item not in list? You can type any custom Item Code and Description.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
