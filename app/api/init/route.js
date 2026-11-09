@@ -5,6 +5,7 @@ import User from '@/models/User';
 import MRN from '@/models/MRN';
 import { INITIAL_DEPARTMENTS } from '@/lib/seedData';
 import { ensureUsersSeeded } from '@/lib/seedUsers';
+import { ensureCatalogSeeded } from '@/lib/seedCatalog';
 
 let hasInitRun = false;
 
@@ -38,6 +39,7 @@ export async function GET() {
     }
 
     await ensureUsersSeeded();
+    await ensureCatalogSeeded();
     const newCount = await Department.countDocuments();
     hasInitRun = true;
     return NextResponse.json({
@@ -58,6 +60,7 @@ export async function POST() {
       await Department.findOneAndUpdate({ name: dept.name }, { $set: dept }, { upsert: true, new: true });
     }
     await ensureUsersSeeded();
+    await ensureCatalogSeeded();
     const count = await Department.countDocuments();
     return NextResponse.json({ success: true, message: `Successfully synchronized ${count} departments and supervisors.`, count });
   } catch (error) {

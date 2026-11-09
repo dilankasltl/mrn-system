@@ -212,6 +212,7 @@ export async function POST(req) {
       .filter((item) => item.description && item.description.trim())
       .map((item, idx) => ({
         itemNo: item.itemNo || idx + 1,
+        itemCode: item.itemCode ? item.itemCode.trim() : '',
         description: item.description.trim(),
         requestQty: Number(item.requestQty) || 0,
         unit: item.unit ? item.unit.trim() : 'Nos',

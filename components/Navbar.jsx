@@ -17,6 +17,7 @@ import {
   Clock,
   ChevronDown,
   Home,
+  Package,
 } from 'lucide-react';
 
 export default function Navbar({
@@ -377,6 +378,21 @@ export default function Navbar({
               ? 'Supervisor Analytics & Reports'
               : 'Stores & Management Analytics / Reports'}
           </button>
+
+          {/* Item Master Catalog (Admin & Stores) */}
+          {(currentUser.role === 'admin' || currentUser.role === 'stores') && (
+            <button
+              onClick={() => setActiveTab('items')}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                activeTab === 'items'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5" />
+              Item Master Catalog
+            </button>
+          )}
 
           {/* Admin panel only visible when logged in as admin */}
           {currentUser.role === 'admin' && (

@@ -7,6 +7,7 @@ import NewMRNModal from '@/components/NewMRNModal';
 import MRNDetailsModal from '@/components/MRNDetailsModal';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import AdminPanel from '@/components/AdminPanel';
+import ItemMasterPanel from '@/components/ItemMasterPanel';
 import LoginModal from '@/components/LoginModal';
 import NotificationToast from '@/components/NotificationToast';
 import {
@@ -1088,6 +1089,11 @@ export default function HomePage() {
             onSelectMRN={(m) => setSelectedMRN(m)}
             onRefreshMRNs={fetchMRNs}
           />
+        )}
+
+        {/* Tab 4: Item Master Catalog (Admin & Stores) */}
+        {activeTab === 'items' && (currentUser.role === 'admin' || currentUser.role === 'stores') && (
+          <ItemMasterPanel currentUser={currentUser} />
         )}
       </main>
 

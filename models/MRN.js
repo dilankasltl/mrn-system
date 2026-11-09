@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const MRNItemSchema = new mongoose.Schema(
   {
     itemNo: { type: Number, required: true },
+    itemCode: { type: String, default: '', trim: true },
     description: { type: String, required: true, trim: true },
     requestQty: { type: Number, required: true, min: 0 },
     unit: { type: String, default: 'Nos', trim: true },

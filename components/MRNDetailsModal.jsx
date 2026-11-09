@@ -429,7 +429,8 @@ export default function MRNDetailsModal({
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  <th className="py-2.5 px-3 w-12 text-center">NO.</th>
+                  <th className="py-2.5 px-3 w-10 text-center">#</th>
+                  <th className="py-2.5 px-3 w-36">Item No.</th>
                   <th className="py-2.5 px-3">Description</th>
                   <th className="py-2.5 px-3 w-32">Material Request QTY</th>
                   <th className="py-2.5 px-3 w-36">Material Issued QTY</th>
@@ -441,6 +442,9 @@ export default function MRNDetailsModal({
                 {storeItems.map((item, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition">
                     <td className="py-2.5 px-3 text-center font-bold text-slate-400">{item.itemNo}</td>
+                    <td className="py-2.5 px-3 font-mono font-bold text-amber-600 dark:text-amber-400">
+                      {item.itemCode || '-'}
+                    </td>
                     <td className="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-200">{item.description}</td>
                     <td className="py-2.5 px-3 font-semibold text-slate-700 dark:text-slate-300">{item.requestQty} {item.unit}</td>
                     <td className="py-2 px-3">
@@ -508,7 +512,8 @@ export default function MRNDetailsModal({
                 <table className="w-full text-xs">
                   <thead className="bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 font-semibold">
                     <tr>
-                      <th className="py-2 px-2 w-10 text-center">#</th>
+                      <th className="py-2 px-2 w-8 text-center">#</th>
+                      <th className="py-2 px-2 w-28">Item No.</th>
                       <th className="py-2 px-2">Description</th>
                       <th className="py-2 px-2 w-24">Qty</th>
                       <th className="py-2 px-2 w-20">Unit</th>
@@ -519,6 +524,9 @@ export default function MRNDetailsModal({
                     {supervisorItems.map((item, idx) => (
                       <tr key={idx}>
                         <td className="py-1.5 px-2 text-center text-amber-500 font-bold">{idx + 1}</td>
+                        <td className="py-1.5 px-1">
+                          <input type="text" placeholder="Item No" value={item.itemCode || ''} onChange={(e) => { const updated = [...supervisorItems]; updated[idx].itemCode = e.target.value; setSupervisorItems(updated); }} className="w-full text-xs font-mono font-bold p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none uppercase" />
+                        </td>
                         <td className="py-1.5 px-1">
                           <input type="text" value={item.description} onChange={(e) => { const updated = [...supervisorItems]; updated[idx].description = e.target.value; setSupervisorItems(updated); }} className="w-full text-xs p-1.5 border border-amber-200 dark:border-amber-700 bg-amber-50/30 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none" />
                         </td>
