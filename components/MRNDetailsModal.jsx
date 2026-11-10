@@ -174,10 +174,20 @@ export default function MRNDetailsModal({
 
     searchTimerRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/items?search=${encodeURIComponent(text.trim())}&limit=15`);
+        const res = await fetch(`/api/items?search=${encodeURIComponent(text.trim())}&limit=20`);
         const data = await res.json();
         if (data.success) {
-          setSearchResults(data.items || []);
+          // Strictly deduplicate by description
+          const seen = new Set();
+          const uniqueItems = [];
+          for (const it of (data.items || [])) {
+            const k = (it.description || '').trim().toLowerCase();
+            if (!seen.has(k)) {
+              seen.add(k);
+              uniqueItems.push(it);
+            }
+          }
+          setSearchResults(uniqueItems);
         }
       } catch (err) {
         console.error('Error fetching catalog search:', err);

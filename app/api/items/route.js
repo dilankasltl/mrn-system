@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Item from '@/models/Item';
 import seedItems from '@/lib/seedItems.json';
-import { ensureCatalogSeeded } from '@/lib/seedCatalog';
+import { ensureCatalogSeeded, deduplicateDatabaseCatalog } from '@/lib/seedCatalog';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +32,6 @@ export async function GET(req) {
     if (dbConnected) {
       const dbCount = await Item.countDocuments();
       if (dbCount === 0) {
-        // Kick off seeding in background if not already seeded
         ensureCatalogSeeded().catch((err) => console.error('Seed error:', err));
       }
 
@@ -46,7 +45,20 @@ export async function GET(req) {
         }
 
         total = await Item.countDocuments(query);
-        items = await Item.find(query).sort({ itemNo: 1 }).skip(skip).limit(limit).lean();
+        // Fetch slightly extra to account for any on-the-fly deduplication
+        const rawItems = await Item.find(query).sort({ itemNo: 1 }).skip(skip).limit(limit * 2).lean();
+
+        // Strictly Deduplicate by description: only one item per description
+        const seenDesc = new Set();
+        items = [];
+        for (const it of rawItems) {
+          const k = (it.description || '').trim().toLowerCase();
+          if (!seenDesc.has(k)) {
+            seenDesc.add(k);
+            items.push(it);
+          }
+          if (items.length >= limit) break;
+        }
 
         return NextResponse.json({
           success: true,
@@ -68,8 +80,20 @@ export async function GET(req) {
           (it.description && it.description.toLowerCase().includes(q))
       );
     }
-    total = filtered.length;
-    items = filtered.slice(skip, skip + limit).map((it, idx) => ({
+
+    // Deduplicate static results
+    const staticSeen = new Set();
+    const staticUnique = [];
+    for (const it of filtered) {
+      const k = (it.description || '').trim().toLowerCase();
+      if (!staticSeen.has(k)) {
+        staticSeen.add(k);
+        staticUnique.push(it);
+      }
+    }
+
+    total = staticUnique.length;
+    items = staticUnique.slice(skip, skip + limit).map((it, idx) => ({
       _id: `seed_${skip + idx}`,
       itemNo: it.itemNo,
       description: it.description,
@@ -116,10 +140,24 @@ export async function POST(req) {
     }
 
     // Check if itemNo already exists
-    const existing = await Item.findOne({ itemNo: itemNo.trim() });
-    if (existing) {
+    const existingNo = await Item.findOne({ itemNo: itemNo.trim() });
+    if (existingNo) {
       return NextResponse.json(
         { success: false, error: `Item with Item No "${itemNo.trim()}" already exists.` },
+        { status: 409 }
+      );
+    }
+
+    // Check if exact same description already exists (prevent duplicate descriptions)
+    const existingDesc = await Item.findOne({
+      description: { $regex: new RegExp(`^${escapeRegex(description.trim())}$`, 'i') },
+    });
+    if (existingDesc) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `An item with description "${description.trim()}" already exists in the catalog (Item No: ${existingDesc.itemNo}). Duplicate descriptions are not allowed.`,
+        },
         { status: 409 }
       );
     }

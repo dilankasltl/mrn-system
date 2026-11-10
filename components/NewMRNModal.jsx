@@ -145,10 +145,20 @@ export default function NewMRNModal({
 
     searchTimerRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/items?search=${encodeURIComponent(text.trim())}&limit=15`);
+        const res = await fetch(`/api/items?search=${encodeURIComponent(text.trim())}&limit=20`);
         const data = await res.json();
         if (data.success) {
-          setSearchResults(data.items || []);
+          // Strictly deduplicate by description
+          const seen = new Set();
+          const uniqueItems = [];
+          for (const it of (data.items || [])) {
+            const k = (it.description || '').trim().toLowerCase();
+            if (!seen.has(k)) {
+              seen.add(k);
+              uniqueItems.push(it);
+            }
+          }
+          setSearchResults(uniqueItems);
         }
       } catch (err) {
         console.error('Error fetching catalog search:', err);
@@ -199,6 +209,17 @@ export default function NewMRNModal({
         setError(`Please enter a valid Material Request QTY for item: ${it.description}`);
         return;
       }
+    }
+
+    // Check for duplicate descriptions in the same MRN
+    const descSet = new Set();
+    for (const it of validItems) {
+      const d = it.description.trim().toLowerCase();
+      if (descSet.has(d)) {
+        setError(`Duplicate item description: "${it.description}". Please combine quantities or use a distinct description.`);
+        return;
+      }
+      descSet.add(d);
     }
 
     setLoading(true);
