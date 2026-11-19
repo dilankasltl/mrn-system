@@ -92,7 +92,8 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Date and Approval History Filters
-  const [dateFilter, setDateFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'THIS_MONTH' | 'CUSTOM'
+  const [dateFilter, setDateFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'YESTERDAY' | 'SINGLE' | 'THIS_MONTH' | 'CUSTOM'
+  const [singleDateFilter, setSingleDateFilter] = useState('');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [approvalHistoryFilter, setApprovalHistoryFilter] = useState('ALL'); // 'ALL' | 'MY_APPROVALS' | 'PENDING_ME'
@@ -231,6 +232,15 @@ export default function HomePage() {
         const todayStr = now.toISOString().slice(0, 10);
         params.append('startDate', todayStr);
         params.append('endDate', todayStr);
+      } else if (dateFilter === 'YESTERDAY') {
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = yest.toISOString().slice(0, 10);
+        params.append('startDate', yestStr);
+        params.append('endDate', yestStr);
+      } else if (dateFilter === 'SINGLE' && singleDateFilter) {
+        params.append('startDate', singleDateFilter);
+        params.append('endDate', singleDateFilter);
       } else if (dateFilter === 'THIS_MONTH') {
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
         const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
@@ -274,6 +284,7 @@ export default function HomePage() {
     currentUser.department,
     currentUser.name,
     dateFilter,
+    singleDateFilter,
     customStartDate,
     customEndDate,
     approvalHistoryFilter,
@@ -674,8 +685,10 @@ export default function HomePage() {
                     >
                       <option value="ALL">All Dates</option>
                       <option value="TODAY">Today</option>
+                      <option value="YESTERDAY">Yesterday</option>
+                      <option value="SINGLE">Specific Date</option>
                       <option value="THIS_MONTH">This Month</option>
-                      <option value="CUSTOM">Custom Range</option>
+                      <option value="CUSTOM">Date Range</option>
                     </select>
                   </div>
 
@@ -812,7 +825,34 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* Custom Date Pickers */}
+                {/* Single Date Picker */}
+                {dateFilter === 'SINGLE' && (
+                  <div className="flex items-center gap-2 bg-indigo-50/70 dark:bg-indigo-950/30 px-3 py-1 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                    <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span className="text-indigo-900 dark:text-indigo-300 text-[11px] font-bold">Date:</span>
+                    <input
+                      type="date"
+                      value={singleDateFilter}
+                      onChange={(e) => setSingleDateFilter(e.target.value)}
+                      className="bg-transparent text-xs text-slate-900 dark:text-slate-100 font-semibold focus:outline-none"
+                    />
+                    {singleDateFilter && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSingleDateFilter('');
+                          setDateFilter('ALL');
+                        }}
+                        className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold ml-1"
+                        title="Clear date"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Custom Date Range Pickers */}
                 {dateFilter === 'CUSTOM' && (
                   <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
                     <span className="text-slate-500 text-[11px]">From:</span>
@@ -1067,6 +1107,7 @@ export default function HomePage() {
             departments={departments}
             stats={stats}
             loading={loading}
+            onSelectMRN={(m) => setSelectedMRN(m)}
             onRefresh={() => {
               fetchMRNs();
               fetchStats();
